@@ -55,6 +55,8 @@ const lunaPreviewContent = $('lunaPreviewContent');
 const lunaPreviewClose  = $('lunaPreviewClose');
 const lunaPreviewSend   = $('lunaPreviewSend');
 
+const malakWelcome    = $('malakWelcome');
+
 const editModal       = $('editModal');
 const editMessageInput= $('editMessageInput');
 const editModalClose  = $('editModalClose');
@@ -128,9 +130,19 @@ function showScreen(role) {
     // Smooth transition logic is handled by CSS (opacity/visibility)
     setTimeout(() => {
         if (role === 'luna') {
-            lunaChat.classList.remove('hidden');
-            renderLunaMessages();
-            scrollLuna();
+            if (malakWelcome) {
+                malakWelcome.classList.remove('hidden');
+                setTimeout(() => {
+                    malakWelcome.classList.add('hidden');
+                    lunaChat.classList.remove('hidden');
+                    renderLunaMessages();
+                    scrollLuna();
+                }, 3000);
+            } else {
+                lunaChat.classList.remove('hidden');
+                renderLunaMessages();
+                scrollLuna();
+            }
         } else if (role === 'admin') {
             adminDash.classList.remove('hidden');
             renderAdmin();
@@ -382,7 +394,7 @@ function renderAdmin(filter) {
         ? lunaOnly.slice().reverse().map(m => {
             const preview = m.type === 'text' ? m.content : `[${m.type}]`;
             return `<div class="sidebar-item" data-id="${m.id}">
-                <div class="si-sender">Luna ${m.deletedByLuna ? '<span style="color:#e74c6f;font-size:10px;margin-left:4px;">(Deleted)</span>' : ''}</div>
+                <div class="si-sender">Malak ${m.deletedByLuna ? '<span style="color:#e74c6f;font-size:10px;margin-left:4px;">(Deleted)</span>' : ''}</div>
                 <div class="si-preview">${escapeHtml(preview)}</div>
                 <div class="si-time">${fmtTime(m.timestamp)}</div>
             </div>`;
@@ -414,7 +426,7 @@ function renderAdmin(filter) {
             content = `<video src="${m.mediaUrl}" controls playsinline></video>`;
         }
         return `<div class="admin-msg ${cls}" data-id="${m.id}">
-            <div class="am-sender">${isLuna ? '🌸 Luna' : '🛡️ Admin'} ${m.deletedByLuna ? '<span style="color:#e74c6f;font-size:10px;margin-left:4px;">(Deleted by Luna)</span>' : ''}</div>
+            <div class="am-sender">${isLuna ? '👸🏻 Malak' : '🛡️ Admin'} ${m.deletedByLuna ? '<span style="color:#e74c6f;font-size:10px;margin-left:4px;">(Deleted by Malak)</span>' : ''}</div>
             ${content}
             <div class="am-time">
                 <span>${fmtTime(m.timestamp)}</span>
@@ -462,8 +474,8 @@ adminExportBtn.addEventListener('click', () => {
     let txt = '--- Secret Room Chat Export ---\n\n';
     msgs.forEach(m => {
         const time = fmtTime(m.timestamp);
-        const sender = m.sender === 'luna' ? 'Luna' : 'Admin';
-        const content = (m.type === 'text' ? m.content : `[Attached ${m.type}]`) + (m.deletedByLuna ? ' (Deleted by Luna)' : '');
+        const sender = m.sender === 'luna' ? 'Malak' : 'Admin';
+        const content = (m.type === 'text' ? m.content : `[Attached ${m.type}]`) + (m.deletedByLuna ? ' (Deleted by Malak)' : '');
         txt += `[${time}] ${sender}: ${content}\n`;
     });
     const blob = new Blob([txt], { type: 'text/plain' });
