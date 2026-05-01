@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret Room for my safe haven</title>
+    <meta name="description" content="Private chat room">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ═══════════════ FLOATING FLOWERS ═══════════════ -->
+<div class="flower-bg-layer">
+    <img src="images/flower-sakura.svg" class="flower-float f-1" />
+    <img src="images/flower-daisy.svg" class="flower-float f-2" />
+    <img src="images/flower-rose.svg" class="flower-float f-3" />
+    <img src="images/flower-lotus.svg" class="flower-float f-4" />
+    <img src="images/flower-sakura.svg" class="flower-float f-5" />
+    <img src="images/flower-daisy.svg" class="flower-float f-6" />
+</div>
+
+<!-- ═══════════════ LOGIN SCREEN ═══════════════ -->
+<div id="loginScreen" class="login-screen">
+    <div class="login-bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+    <div class="login-card">
+        <div class="login-avatar">🌙</div>
+        <h1 class="login-title">Secret Room For My Safe Haven </h1>
+        <p class="login-subtitle">Enter the password to continue</p>
+        <form id="loginForm" autocomplete="off">
+            <div class="input-wrapper">
+                <div class="password-input-group">
+                    <input type="password" id="passwordInput" placeholder="Password..." autocomplete="off" />
+                    <button type="button" id="togglePasswordBtn" class="toggle-pw-btn" title="Show/Hide">👁️</button>
+                </div>
+                <button type="submit" class="login-btn" id="loginBtn">→</button>
+            </div>
+            <p id="loginError" class="login-error"></p>
+        </form>
+    </div>
+</div>
+
+<!-- ═══════════════ LUNA'S CHAT INTERFACE ═══════════════ -->
+<div id="lunaChat" class="luna-chat hidden">
+    <!-- Top Bar -->
+    <div class="luna-topbar">
+        <div class="luna-topbar-left">
+            <div class="luna-avatar-circle">🌸</div>
+            <div>
+                <span class="luna-name">Luna</span>
+                <span class="luna-sparkle">✨</span>
+            </div>
+        </div>
+        <button class="luna-logout-btn" id="lunaLogout" title="Logout">⏻</button>
+    </div>
+
+    <!-- Messages Area -->
+    <div class="luna-messages" id="lunaMessages"></div>
+
+    <!-- Hearts container -->
+    <div id="heartsContainer" class="hearts-container"></div>
+
+    <!-- Input Area -->
+    <div class="luna-input-area">
+        <label class="luna-attach-btn" for="lunaFileInput" title="Attach image or video">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+        </label>
+        <input type="file" id="lunaFileInput" accept="image/*,video/*" class="hidden-file" />
+        <input type="text" id="lunaTextInput" placeholder="Type a message..." autocomplete="off" />
+        <button class="luna-send-btn" id="lunaSendBtn" title="Send">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+    </div>
+
+    <!-- Media Preview -->
+    <div id="lunaMediaPreview" class="media-preview hidden">
+        <div class="media-preview-inner">
+            <button class="media-preview-close" id="lunaPreviewClose">✕</button>
+            <div id="lunaPreviewContent"></div>
+            <button class="media-preview-send" id="lunaPreviewSend">Send</button>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="media-preview hidden">
+        <div class="media-preview-inner edit-modal-inner">
+            <h3 class="edit-title">Edit Message</h3>
+            <input type="text" id="editMessageInput" class="edit-input" />
+            <div class="edit-actions">
+                <button class="edit-btn-cancel" id="editModalClose">Cancel</button>
+                <button class="edit-btn-save" id="editModalSave">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ ADMIN DASHBOARD ═══════════════ -->
+<div id="adminDash" class="admin-dash hidden">
+    <!-- Top Bar -->
+    <div class="admin-topbar">
+        <h2 class="admin-title">🛡️ Admin Dashboard</h2>
+        <div class="admin-topbar-right">
+            <button class="admin-util-btn" id="adminExportBtn" title="Export Chat">💾 Export</button>
+            <button class="admin-util-btn clear-btn" id="adminClearBtn" title="Clear Chat">🧨 Clear</button>
+            <input type="text" id="adminSearch" class="admin-search" placeholder="Search messages..." />
+            <button class="admin-logout-btn" id="adminLogout">Logout</button>
+        </div>
+    </div>
+
+    <div class="admin-body">
+        <!-- Sidebar -->
+        <div class="admin-sidebar" id="adminSidebar"></div>
+
+        <!-- Main chat area -->
+        <div class="admin-main">
+            <div class="admin-messages" id="adminMessages"></div>
+            <div class="admin-reply-area">
+                <input type="text" id="adminReplyInput" placeholder="Type a hidden reply..." autocomplete="off" />
+                <button class="admin-reply-btn" id="adminReplyBtn">Reply</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Global Lightbox -->
+<div id="lightbox" class="media-preview hidden" style="z-index: 9999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);">
+    <div class="media-preview-inner" style="background: transparent; box-shadow: none; max-width: 95vw; padding: 0;">
+        <button class="media-preview-close" id="lightboxClose" style="color: white; font-size: 32px; right: 0; top: -40px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">✕</button>
+        <div id="lightboxContent"></div>
+    </div>
+</div>
+
+<script src="index.js"></script>
+</body>
+</html>
