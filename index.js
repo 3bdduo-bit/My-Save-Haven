@@ -202,6 +202,8 @@ function renderLunaMessages() {
             content = `<img src="${m.mediaUrl}" alt="image" loading="lazy"/>`;
         } else if (m.type === 'video') {
             content = `<video src="${m.mediaUrl}" controls playsinline></video>`;
+        } else if (m.type === 'heart-bot') {
+            content = `<div style="font-size: 70px; text-align: center; animation: gentleBounce 2s infinite; filter: drop-shadow(0 0 10px rgba(255,105,180,0.6));">❤️</div><div style="margin-top: 15px; font-size: 16px; font-weight: bold; text-align: center; color: #d65076; font-family: 'Quicksand', sans-serif;">You deserve a big heart because of your beauty</div>`;
         }
 
         const isLuna = m.sender === 'luna';
@@ -295,6 +297,16 @@ function lunaSendText() {
         content: text, timestamp: new Date().toISOString(),
         mediaUrl: null, deletedByLuna: false
     });
+    
+    // Automated reply
+    if (text.toLowerCase().includes('add a heart')) {
+        msgs.push({
+            id: nextId(msgs), sender:'admin', type:'heart-bot',
+            content: '', timestamp: new Date().toISOString(),
+            mediaUrl: null, deletedByLuna: false
+        });
+    }
+
     saveMessages(msgs);
     lunaTextInput.value = '';
     renderLunaMessages();
@@ -424,6 +436,8 @@ function renderAdmin(filter) {
             content = `<img src="${m.mediaUrl}" alt="image" loading="lazy"/>`;
         } else if (m.type === 'video') {
             content = `<video src="${m.mediaUrl}" controls playsinline></video>`;
+        } else if (m.type === 'heart-bot') {
+            content = `<div style="font-size: 30px; text-align: center;">❤️</div><div style="margin-top: 5px; font-weight: bold; text-align: center; font-size: 13px;">You deserve a big heart because of your beauty</div>`;
         }
         return `<div class="admin-msg ${cls}" data-id="${m.id}">
             <div class="am-sender">${isLuna ? '👸🏻 Malak' : '🛡️ Admin'} ${m.deletedByLuna ? '<span style="color:#e74c6f;font-size:10px;margin-left:4px;">(Deleted by Malak)</span>' : ''}</div>
@@ -475,7 +489,8 @@ adminExportBtn.addEventListener('click', () => {
     msgs.forEach(m => {
         const time = fmtTime(m.timestamp);
         const sender = m.sender === 'luna' ? 'Malak' : 'Admin';
-        const content = (m.type === 'text' ? m.content : `[Attached ${m.type}]`) + (m.deletedByLuna ? ' (Deleted by Malak)' : '');
+        const contentStr = m.type === 'text' ? m.content : (m.type === 'heart-bot' ? '[Automated Heart Reply]' : `[Attached ${m.type}]`);
+        const content = contentStr + (m.deletedByLuna ? ' (Deleted by Malak)' : '');
         txt += `[${time}] ${sender}: ${content}\n`;
     });
     const blob = new Blob([txt], { type: 'text/plain' });
