@@ -1,7 +1,36 @@
-/* ═══════════════ STORAGE KEYS ═══════════════ */
-const STORAGE_MESSAGES = 'secretroom_messages_v2';
-const STORAGE_SESSION  = 'secretroom_session';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyDCLSzy1JRhoZiGQaolmlxTqRH1vob2KC8",
+  authDomain: "secret-chat-ec8d1.firebaseapp.com",
+  databaseURL: "https://secret-chat-ec8d1-default-rtdb.firebaseio.com",
+  projectId: "secret-chat-ec8d1",
+  storageBucket: "secret-chat-ec8d1.firebasestorage.app",
+  messagingSenderId: "1072386242503",
+  appId: "1:1072386242503:web:4b9086d6c750984fb7cbe2",
+  measurementId: "G-KKLC48KJ0B"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+let globalMessages = [];
+
+onValue(ref(db, 'messages'), (snapshot) => {
+    globalMessages = snapshot.val() || [];
+    if (typeof currentRole !== 'undefined') {
+        if (currentRole === 'luna') {
+            if (typeof renderLunaMessages === 'function') renderLunaMessages();
+            if (typeof scrollLuna === 'function') scrollLuna();
+        } else if (currentRole === 'admin') {
+            if (typeof renderAdmin === 'function') renderAdmin();
+        }
+    }
+});
+
+/* ═══════════════ STORAGE KEYS ═══════════════ */
+const STORAGE_SESSION  = 'secretroom_session';
 const LUNA_PASS  = 'malak mahmoud';
 const ADMIN_PASS = '3bdduo';
 
@@ -53,12 +82,11 @@ let editingMsgId = null;
 
 /* ═══════════════ HELPERS ═══════════════ */
 function getMessages() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_MESSAGES)) || []; }
-    catch { return []; }
+    return globalMessages || [];
 }
 
 function saveMessages(msgs) {
-    localStorage.setItem(STORAGE_MESSAGES, JSON.stringify(msgs));
+    set(ref(db, 'messages'), msgs);
 }
 
 function nextId(msgs) {
@@ -106,7 +134,6 @@ function showScreen(role) {
         } else if (role === 'admin') {
             adminDash.classList.remove('hidden');
             renderAdmin();
-            adminPollTimer = setInterval(renderAdmin, 2000);
         } else {
             loginScreen.classList.remove('hidden');
             passwordInput.value = '';
