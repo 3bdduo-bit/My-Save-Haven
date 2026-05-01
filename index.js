@@ -195,7 +195,7 @@ function renderLunaMessages() {
         const isLuna = m.sender === 'luna';
         const cls = isLuna ? 'luna-bubble' : 'admin-bubble-in-luna';
         const senderBadge = isLuna ? '' : '<span class="am-sender-badge">🛡️ Admin Reply</span>';
-        const readReceipt = isLuna ? (m.read ? '<span class="read-receipt" title="Read by Admin">✓✓</span>' : '<span class="read-receipt" title="Delivered">✓</span>') : '';
+        const readReceipt = '';
         
         let actionBtns = '';
         if (isLuna && m.type === 'text') {
