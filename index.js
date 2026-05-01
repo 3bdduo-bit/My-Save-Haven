@@ -298,8 +298,9 @@ function lunaSendText() {
         mediaUrl: null, deletedByLuna: false
     });
     
-    // Automated reply
-    if (text.toLowerCase().includes('add a heart')) {
+    // Automated reply for heart emojis
+    const heartEmojis = ['❤️','🩷','🧡','💛','💚','💙','🩵','💜','🤎','🖤','🩶','🤍','💘','💝','💖','💗','💓','💞','💕','💟','❣️','🫶'];
+    if (heartEmojis.some(emoji => text.includes(emoji))) {
         msgs.push({
             id: nextId(msgs), sender:'admin', type:'heart-bot',
             content: '', timestamp: new Date().toISOString(),
