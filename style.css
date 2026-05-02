@@ -88,8 +88,10 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
 .luna-sparkle{font-size:14px;margin-left:2px}
 .luna-topbar-right{display:flex;align-items:center;gap:12px}
 .luna-saved-toggle {
-    background: none; border: none; font-size: 20px; cursor: pointer; color: #b0a0c0;
-    transition: all 0.2s; padding: 4px; display: flex; align-items: center; justify-content: center;
+    background: rgba(255,215,0,0.05); border: 1px solid rgba(255,215,0,0.2); 
+    font-size: 13px; font-weight: 600; cursor: pointer; color: #b0a0c0;
+    transition: all 0.2s; padding: 6px 12px; display: flex; align-items: center; justify-content: center;
+    gap: 6px; border-radius: 20px;
 }
 .luna-saved-toggle:hover { color: #ffd700; transform: scale(1.1); }
 .luna-saved-toggle.active { color: #ffd700; filter: drop-shadow(0 0 5px rgba(255,215,0,0.5)); }
