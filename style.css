@@ -414,6 +414,68 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
     50% { opacity: 0; transform: translate(40px, -60px) scale(0.8) rotate(-10deg); }
 }
 
+/* ═══════════════ NEW FEATURES ═══════════════ */
+/* Date Separator */
+.date-separator {
+    text-align: center; margin: 16px 0; position: relative;
+}
+.date-separator::before {
+    content: ''; position: absolute; top: 50%; left: 0; right: 0;
+    border-top: 1px solid rgba(200,180,220,0.3); z-index: 1;
+}
+.date-separator span {
+    background: rgba(255,255,255,0.7); backdrop-filter: blur(4px);
+    padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;
+    color: #8a7a9a; position: relative; z-index: 2; display: inline-block;
+}
+.admin-dash .date-separator::before { border-top: 1px solid #e0e0e0; }
+.admin-dash .date-separator span { background: #fff; color: #888; border: 1px solid #eee; }
+
+/* Scroll to Bottom Button */
+.scroll-bottom-btn {
+    position: absolute; bottom: 80px; right: 20px; width: 40px; height: 40px;
+    border-radius: 50%; background: #fff; border: 1px solid rgba(200,180,220,0.4);
+    color: #c9a0dc; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: 0 4px 12px rgba(180,140,200,0.2);
+    opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s, transform 0.2s;
+    z-index: 50; font-size: 20px;
+}
+.scroll-bottom-btn.visible { opacity: 1; visibility: visible; }
+.scroll-bottom-btn:hover { transform: scale(1.1); color: #e74c6f; }
+.admin-dash .scroll-bottom-btn {
+    bottom: 80px; background: #fff; border: 1px solid #e0e0e0; color: #6c7ae0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Reaction Badge */
+.reaction-badge {
+    position: absolute; bottom: -10px; right: 10px; background: #fff; border-radius: 12px;
+    padding: 2px 6px; font-size: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: 1px solid #fce4ec; z-index: 2; cursor: pointer;
+    user-select: none; transition: transform 0.2s;
+}
+.reaction-badge:hover { transform: scale(1.1); }
+.admin-bubble-in-luna .reaction-badge { right: auto; left: 10px; }
+.admin-msg.luna-sent .reaction-badge { right: auto; left: 10px; }
+
+/* Heart Bot Message Styling */
+.heart-bot-bubble {
+    align-self: center;
+    background: transparent;
+    box-shadow: none;
+    border: none;
+    margin: 10px 0;
+    max-width: 90%;
+    animation: fadeIn 0.5s ease;
+}
+.heart-bot-bubble .msg-actions { display: none; }
+.heart-bot-bubble .msg-time { text-align: center; color: #8a7a9a; margin-top: 10px; font-weight: 500; font-size: 11px; }
+
+.heart-bot-bubble-admin {
+    align-self: center; background: #fffaf0; border: 1px dashed #ffd1dc; color: #d65076;
+}
+
 /* ═══════════════ RESPONSIVE ═══════════════ */
 @media(max-width:768px){
     .admin-sidebar{display:none}

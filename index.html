@@ -89,15 +89,18 @@
 
     <!-- Input Area -->
     <div class="luna-input-area">
-        <label class="luna-attach-btn" for="lunaFileInput" title="Attach image or video">
+        <label class="luna-attach-btn" for="lunaFileInput" title="Attach image, video, or audio">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
         </label>
-        <input type="file" id="lunaFileInput" accept="image/*,video/*" class="hidden-file" />
+        <input type="file" id="lunaFileInput" accept="image/*,video/*,audio/*" class="hidden-file" />
         <input type="text" id="lunaTextInput" placeholder="Type a message..." autocomplete="off" />
         <button class="luna-send-btn" id="lunaSendBtn" title="Send">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
         </button>
     </div>
+
+    <!-- Scroll to bottom button -->
+    <button id="lunaScrollBottom" class="scroll-bottom-btn" title="Scroll to bottom">↓</button>
 
     <!-- Media Preview -->
     <div id="lunaMediaPreview" class="media-preview hidden">
@@ -145,6 +148,8 @@
                 <input type="text" id="adminReplyInput" placeholder="Type a hidden reply..." autocomplete="off" />
                 <button class="admin-reply-btn" id="adminReplyBtn">Reply</button>
             </div>
+            <!-- Scroll to bottom button -->
+            <button id="adminScrollBottom" class="scroll-bottom-btn" title="Scroll to bottom">↓</button>
         </div>
     </div>
 </div>

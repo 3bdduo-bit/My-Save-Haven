@@ -49,6 +49,7 @@ const lunaTextInput   = $('lunaTextInput');
 const lunaSendBtn     = $('lunaSendBtn');
 const lunaFileInput   = $('lunaFileInput');
 const lunaLogout      = $('lunaLogout');
+const lunaScrollBottom = $('lunaScrollBottom');
 const heartsContainer = $('heartsContainer');
 const lunaMediaPreview  = $('lunaMediaPreview');
 const lunaPreviewContent = $('lunaPreviewContent');
@@ -71,6 +72,7 @@ const adminLogout     = $('adminLogout');
 const adminSearch     = $('adminSearch');
 const adminExportBtn  = $('adminExportBtn');
 const adminClearBtn   = $('adminClearBtn');
+const adminScrollBottom = $('adminScrollBottom');
 
 const lightbox        = $('lightbox');
 const lightboxContent = $('lightboxContent');
@@ -105,6 +107,18 @@ function fmtTime(iso) {
 function shortTime(iso) {
     const d = new Date(iso);
     return d.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true });
+}
+
+function formatDateSeparator(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (d.toDateString() === today.toDateString()) return 'Today';
+    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 /* ═══════════════ SESSION ═══════════════ */
@@ -194,7 +208,15 @@ function renderLunaMessages() {
         lunaMessages.innerHTML = '<div class="empty-state"><span>💬</span>No messages yet</div>';
         return;
     }
-    lunaMessages.innerHTML = msgs.map(m => {
+    let html = '';
+    let lastDate = '';
+    msgs.forEach(m => {
+        const msgDate = formatDateSeparator(m.timestamp);
+        if (msgDate !== lastDate) {
+            html += `<div class="date-separator"><span>${msgDate}</span></div>`;
+            lastDate = msgDate;
+        }
+
         let content = '';
         if (m.type === 'text') {
             content = escapeHtml(m.content);
@@ -202,14 +224,22 @@ function renderLunaMessages() {
             content = `<img src="${m.mediaUrl}" alt="image" loading="lazy"/>`;
         } else if (m.type === 'video') {
             content = `<video src="${m.mediaUrl}" controls playsinline></video>`;
+        } else if (m.type === 'audio') {
+            content = `<audio src="${m.mediaUrl}" controls style="max-width:200px; margin-top:6px; outline:none; border-radius:30px;"></audio>`;
         } else if (m.type === 'heart-bot') {
             content = `<div style="font-size: 70px; text-align: center; animation: gentleBounce 2s infinite; filter: drop-shadow(0 0 10px rgba(255,105,180,0.6));">❤️</div><div style="margin-top: 15px; font-size: 16px; font-weight: bold; text-align: center; color: #d65076; font-family: 'Quicksand', sans-serif;">You deserve a big heart because of your beauty</div>`;
         }
 
         const isLuna = m.sender === 'luna';
-        const cls = isLuna ? 'luna-bubble' : 'admin-bubble-in-luna';
-        const senderBadge = isLuna ? '' : '<span class="am-sender-badge">🛡️ Admin Reply</span>';
+        let cls = isLuna ? 'luna-bubble' : 'admin-bubble-in-luna';
+        let senderBadge = isLuna ? '' : '<span class="am-sender-badge">🛡️ Admin Reply</span>';
         const readReceipt = '';
+        const reactionBadge = m.reaction ? `<div class="reaction-badge" onclick="toggleReaction(${m.id}, event)">${m.reaction}</div>` : '';
+        
+        if (m.type === 'heart-bot') {
+            cls = 'heart-bot-bubble';
+            senderBadge = '';
+        }
         
         let actionBtns = '';
         if (isLuna && m.type === 'text') {
@@ -223,16 +253,25 @@ function renderLunaMessages() {
             </div>`;
         }
 
-        return `<div class="${cls}">
-            ${senderBadge}
-            ${content}
-            <div style="display:flex; justify-content:space-between; align-items:center;">
+        let timeRow = '';
+        if (m.type === 'heart-bot') {
+            timeRow = `<div class="msg-time">${fmtTime(m.timestamp)}</div>`;
+        } else {
+            timeRow = `<div style="display:flex; justify-content:space-between; align-items:center;">
                 <span></span>
                 <span class="msg-time">${fmtTime(m.timestamp)} ${readReceipt}</span>
-            </div>
+            </div>`;
+        }
+
+        html += `<div class="${cls}" data-id="${m.id}" ondblclick="toggleReaction(${m.id}, event)">
+            ${senderBadge}
+            ${content}
+            ${timeRow}
             ${actionBtns}
+            ${reactionBadge}
         </div>`;
-    }).join('');
+    });
+    lunaMessages.innerHTML = html;
 }
 
 function scrollLuna() {
@@ -324,10 +363,20 @@ function handleFileSelect(file) {
     const reader = new FileReader();
     reader.onload = () => {
         const isVideo = file.type.startsWith('video');
-        pendingMedia = { type: isVideo ? 'video' : 'image', dataUrl: reader.result };
-        lunaPreviewContent.innerHTML = isVideo
-            ? `<video src="${reader.result}" controls style="max-width:100%;max-height:50vh;border-radius:12px"></video>`
-            : `<img src="${reader.result}" style="max-width:100%;max-height:50vh;border-radius:12px"/>`;
+        const isAudio = file.type.startsWith('audio');
+        let type = 'image';
+        if (isVideo) type = 'video';
+        if (isAudio) type = 'audio';
+
+        pendingMedia = { type, dataUrl: reader.result };
+        
+        if (isVideo) {
+            lunaPreviewContent.innerHTML = `<video src="${reader.result}" controls style="max-width:100%;max-height:50vh;border-radius:12px"></video>`;
+        } else if (isAudio) {
+            lunaPreviewContent.innerHTML = `<audio src="${reader.result}" controls style="width:100%; margin:20px 0; outline:none;"></audio>`;
+        } else {
+            lunaPreviewContent.innerHTML = `<img src="${reader.result}" style="max-width:100%;max-height:50vh;border-radius:12px"/>`;
+        }
         lunaMediaPreview.classList.remove('hidden');
     };
     reader.readAsDataURL(file);
@@ -345,7 +394,7 @@ lunaChat.addEventListener('drop', e => {
     e.preventDefault();
     lunaChat.classList.remove('drag-active');
     const file = e.dataTransfer.files[0];
-    if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
+    if (file && (file.type.startsWith('image/') || file.type.startsWith('video/') || file.type.startsWith('audio/'))) {
         handleFileSelect(file);
     }
 });
@@ -427,9 +476,24 @@ function renderAdmin(filter) {
         return;
     }
 
-    adminMessages.innerHTML = filtered.map(m => {
+    let html = '';
+    let lastDate = '';
+    filtered.forEach(m => {
+        const msgDate = formatDateSeparator(m.timestamp);
+        if (msgDate !== lastDate) {
+            html += `<div class="date-separator"><span>${msgDate}</span></div>`;
+            lastDate = msgDate;
+        }
+        
         const isLuna = m.sender === 'luna';
-        const cls = isLuna ? 'luna-sent' : 'admin-reply';
+        let cls = isLuna ? 'luna-sent' : 'admin-reply';
+        let senderLabel = isLuna ? '👸🏻 Malak' : '🛡️ Admin';
+
+        if (m.type === 'heart-bot') {
+            cls = 'heart-bot-bubble-admin';
+            senderLabel = '✨ Automated';
+        }
+
         let content = '';
         if (m.type === 'text') {
             content = escapeHtml(m.content);
@@ -437,18 +501,24 @@ function renderAdmin(filter) {
             content = `<img src="${m.mediaUrl}" alt="image" loading="lazy"/>`;
         } else if (m.type === 'video') {
             content = `<video src="${m.mediaUrl}" controls playsinline></video>`;
+        } else if (m.type === 'audio') {
+            content = `<audio src="${m.mediaUrl}" controls style="max-width:200px; margin-top:6px; outline:none; border-radius:30px;"></audio>`;
         } else if (m.type === 'heart-bot') {
             content = `<div style="font-size: 30px; text-align: center;">❤️</div><div style="margin-top: 5px; font-weight: bold; text-align: center; font-size: 13px;">You deserve a big heart because of your beauty</div>`;
         }
-        return `<div class="admin-msg ${cls}" data-id="${m.id}">
-            <div class="am-sender">${isLuna ? '👸🏻 Malak' : '🛡️ Admin'} ${m.deletedByLuna ? '<span style="color:#e74c6f;font-size:10px;margin-left:4px;">(Deleted by Malak)</span>' : ''}</div>
+        const reactionBadge = m.reaction ? `<div class="reaction-badge" onclick="toggleReaction(${m.id}, event)">${m.reaction}</div>` : '';
+
+        html += `<div class="admin-msg ${cls}" data-id="${m.id}" ondblclick="toggleReaction(${m.id}, event)">
+            <div class="am-sender">${senderLabel} ${m.deletedByLuna ? '<span style="color:#e74c6f;font-size:10px;margin-left:4px;">(Deleted by Malak)</span>' : ''}</div>
             ${content}
             <div class="am-time">
                 <span>${fmtTime(m.timestamp)}</span>
                 ${isLuna ? `<span style="color:#888;font-size:10px;">${m.read ? 'Read ✓✓' : 'Delivered ✓'}</span>` : ''}
             </div>
+            ${reactionBadge}
         </div>`;
-    }).join('');
+    });
+    adminMessages.innerHTML = html;
 
     adminMessages.scrollTop = adminMessages.scrollHeight;
 }
@@ -522,6 +592,39 @@ lightboxClose.addEventListener('click', () => {
     lightbox.classList.add('hidden');
     lightboxContent.innerHTML = ''; // stop video
 });
+
+/* ═══════════════ NEW FEATURES ═══════════════ */
+window.toggleReaction = function(id, e) {
+    if (e) e.stopPropagation();
+    const msgs = getMessages();
+    const idx = msgs.findIndex(m => m.id === id);
+    if (idx !== -1) {
+        msgs[idx].reaction = msgs[idx].reaction ? null : '❤️';
+        saveMessages(msgs);
+        if (currentRole === 'luna') renderLunaMessages();
+        if (currentRole === 'admin') renderAdmin();
+    }
+};
+
+function handleScrollBtn(container, btn) {
+    if (!btn || !container) return;
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    if (isAtBottom) btn.classList.remove('visible');
+    else btn.classList.add('visible');
+}
+lunaMessages.addEventListener('scroll', () => handleScrollBtn(lunaMessages, lunaScrollBottom));
+adminMessages.addEventListener('scroll', () => handleScrollBtn(adminMessages, adminScrollBottom));
+
+if(lunaScrollBottom) {
+    lunaScrollBottom.addEventListener('click', () => {
+        lunaMessages.scrollTo({ top: lunaMessages.scrollHeight, behavior: 'smooth' });
+    });
+}
+if(adminScrollBottom) {
+    adminScrollBottom.addEventListener('click', () => {
+        adminMessages.scrollTo({ top: adminMessages.scrollHeight, behavior: 'smooth' });
+    });
+}
 
 /* ═══════════════ UTIL ═══════════════ */
 function escapeHtml(str) {
