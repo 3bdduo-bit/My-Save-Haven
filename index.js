@@ -61,6 +61,9 @@ const lunaPreviewClose  = $('lunaPreviewClose');
 const lunaPreviewSend   = $('lunaPreviewSend');
 const lunaToggleSaved   = $('lunaToggleSaved');
 const lunaRefresh       = $('lunaRefresh');
+const lunaMoodBtn       = $('lunaMoodBtn');
+const lunaEmojiToggle   = $('lunaEmojiToggle');
+const emojiPicker       = $('emojiPicker');
 
 const malakWelcome    = $('malakWelcome');
 
@@ -129,6 +132,20 @@ function formatDateSeparator(iso) {
     if (d.toDateString() === today.toDateString()) return 'Today';
     if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function showToast(message) {
+    const container = $('toastContainer');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = 'toast-msg';
+    toast.textContent = message;
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.add('fadeOut');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 
 /* ═══════════════ SESSION ═══════════════ */
@@ -926,6 +943,44 @@ if(lunaScrollBottom) {
 if(adminScrollBottom) {
     adminScrollBottom.addEventListener('click', () => {
         adminMessages.scrollTo({ top: adminMessages.scrollHeight, behavior: 'smooth' });
+    });
+}
+
+/* ═══════════════ NEW UI EVENTS ═══════════════ */
+const affirmations = [
+    "You are doing great today! 🌸",
+    "Your smile lights up the world! ✨",
+    "Take a deep breath, you are safe here. 🦋",
+    "You are beautiful inside and out! 💖",
+    "Never forget how special you are. 🥰"
+];
+
+if (lunaMoodBtn) {
+    lunaMoodBtn.addEventListener('click', () => {
+        const randomMsg = affirmations[Math.floor(Math.random() * affirmations.length)];
+        showToast(randomMsg);
+    });
+}
+
+if (lunaEmojiToggle && emojiPicker) {
+    lunaEmojiToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        emojiPicker.classList.toggle('hidden');
+    });
+    
+    document.addEventListener('click', (e) => {
+        if (!emojiPicker.contains(e.target) && e.target !== lunaEmojiToggle && !lunaEmojiToggle.contains(e.target)) {
+            emojiPicker.classList.add('hidden');
+        }
+    });
+    
+    emojiPicker.querySelectorAll('.emoji-item').forEach(item => {
+        item.addEventListener('click', () => {
+            lunaTextInput.value += item.textContent;
+            emojiPicker.classList.add('hidden');
+            lunaTextInput.focus();
+            if (typeof updateDynamicBtn === 'function') updateDynamicBtn();
+        });
     });
 }
 

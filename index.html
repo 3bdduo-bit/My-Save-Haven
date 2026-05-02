@@ -73,6 +73,9 @@
             </div>
         </div>
         <div class="luna-topbar-right">
+            <button class="luna-mood-btn" id="lunaMoodBtn" title="Daily Affirmation">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+            </button>
             <button class="luna-refresh-btn" id="lunaRefresh" title="Refresh">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M23 4v6h-6"></path>
@@ -97,7 +100,16 @@
     <!-- Hearts container -->
     <div id="heartsContainer" class="hearts-container"></div>
 
-    <div class="luna-input-area">
+    <div class="luna-input-area" style="position: relative;">
+        <!-- Emoji Picker Container (Hidden) -->
+        <div id="emojiPicker" class="emoji-picker hidden">
+            <span class="emoji-item">❤️</span><span class="emoji-item">✨</span><span class="emoji-item">🦋</span><span class="emoji-item">🌸</span>
+            <span class="emoji-item">🥺</span><span class="emoji-item">🥰</span><span class="emoji-item">😘</span><span class="emoji-item">🙈</span>
+        </div>
+        
+        <button class="luna-emoji-btn" id="lunaEmojiToggle" title="Emojis">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+        </button>
         <label class="luna-attach-btn" for="lunaFileInput" title="Attach image, video, or audio">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
         </label>
@@ -186,6 +198,9 @@
         <div id="lightboxContent"></div>
     </div>
 </div>
+
+<!-- Toast Notifications -->
+<div id="toastContainer" class="toast-container"></div>
 
 <script type="module" src="index.js"></script>
 </body>
