@@ -76,6 +76,7 @@ const adminLogout     = $('adminLogout');
 const adminSearch     = $('adminSearch');
 const adminExportBtn  = $('adminExportBtn');
 const adminClearBtn   = $('adminClearBtn');
+const adminToggleDeletedBtn = $('adminToggleDeletedBtn');
 const adminScrollBottom = $('adminScrollBottom');
 
 const lightbox        = $('lightbox');
@@ -87,6 +88,7 @@ let currentRole = null;       // 'luna' | 'admin' | null
 let pendingMedia = null;      // { type, dataUrl }
 let adminPollTimer = null;
 let editingMsgId = null;
+let adminShowDeleted = false;
 
 /* ═══════════════ HELPERS ═══════════════ */
 function getMessages() {
@@ -680,6 +682,13 @@ function renderAdmin(filter) {
 
     // Main area — all messages, filtered
     const filtered = msgs.filter(m => {
+        // Filter by Deleted status
+        if (adminShowDeleted) {
+            if (!m.deletedByLuna) return false;
+        } else {
+            if (m.deletedByLuna) return false;
+        }
+
         if (!search) return true;
         return (m.content && m.content.toLowerCase().includes(search))
             || m.sender.toLowerCase().includes(search)
@@ -747,13 +756,37 @@ function renderAdmin(filter) {
 
 adminSearch.addEventListener('input', () => renderAdmin());
 
+if (adminToggleDeletedBtn) {
+    adminToggleDeletedBtn.addEventListener('click', () => {
+        adminShowDeleted = !adminShowDeleted;
+        adminToggleDeletedBtn.textContent = adminShowDeleted ? '💬 Active Chat' : '🗑️ Deleted';
+        adminToggleDeletedBtn.style.background = adminShowDeleted ? '#e8f5e9' : '#e8eaf6';
+        adminToggleDeletedBtn.style.color = adminShowDeleted ? '#2e7d32' : '#5c6bc0';
+        renderAdmin();
+    });
+}
+
 /* Sidebar click scrolls to message */
 adminSidebar.addEventListener('click', e => {
     const item = e.target.closest('.sidebar-item');
     if (!item) return;
     const id = item.dataset.id;
-    const el = adminMessages.querySelector(`.admin-msg[data-id="${id}"]`);
-    if (el) el.scrollIntoView({ behavior:'smooth', block:'center' });
+    const msgs = getMessages();
+    const msg = msgs.find(m => m.id == id);
+    
+    // Auto-switch view if needed
+    if (msg) {
+        if (msg.deletedByLuna && !adminShowDeleted) {
+            adminToggleDeletedBtn.click();
+        } else if (!msg.deletedByLuna && adminShowDeleted) {
+            adminToggleDeletedBtn.click();
+        }
+    }
+
+    setTimeout(() => {
+        const el = adminMessages.querySelector(`.admin-msg[data-id="${id}"]`);
+        if (el) el.scrollIntoView({ behavior:'smooth', block:'center' });
+    }, 100);
 });
 
 /* ═══════════════ ADMIN — REPLY ═══════════════ */
