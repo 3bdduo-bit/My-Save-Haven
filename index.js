@@ -46,9 +46,7 @@ const loginError      = $('loginError');
 const lunaChat        = $('lunaChat');
 const lunaMessages    = $('lunaMessages');
 const lunaTextInput   = $('lunaTextInput');
-const lunaSendBtn     = $('lunaSendBtn');
-const lunaRecordVoiceBtn = $('lunaRecordVoiceBtn');
-const lunaRecordVideoBtn = $('lunaRecordVideoBtn');
+const lunaDynamicBtn  = $('lunaDynamicBtn');
 const recordingPreviewContainer = $('recordingPreviewContainer');
 const recordingPreview = $('recordingPreview');
 const flipCameraBtn   = $('flipCameraBtn');
@@ -357,10 +355,11 @@ function lunaSendText() {
     renderLunaMessages();
     scrollLuna();
     spawnHearts();
+    updateDynamicBtn();
 }
 
-lunaSendBtn.addEventListener('click', lunaSendText);
 lunaTextInput.addEventListener('keydown', e => { if (e.key === 'Enter') lunaSendText(); });
+lunaTextInput.addEventListener('input', () => updateDynamicBtn());
 
 /* ═══════════════ LUNA — ATTACH MEDIA ═══════════════ */
 function handleFileSelect(file) {
@@ -431,10 +430,8 @@ async function startRecording(type) {
                 recordingPreview.classList.remove('mirrored');
             }
             recordingPreviewContainer.classList.remove('hidden');
-            lunaRecordVideoBtn.classList.add('recording');
-        } else {
-            lunaRecordVoiceBtn.classList.add('recording');
         }
+        lunaDynamicBtn.classList.add('recording');
 
         mediaRecorder = new MediaRecorder(recordingStream);
         recordedChunks = [];
@@ -452,8 +449,7 @@ async function startRecording(type) {
             isRecording = false;
             recordingPreviewContainer.classList.add('hidden');
             recordingPreview.srcObject = null;
-            lunaRecordVideoBtn.classList.remove('recording');
-            lunaRecordVoiceBtn.classList.remove('recording');
+            lunaDynamicBtn.classList.remove('recording');
             
             // Only send if recording is > 500ms
             if (Date.now() - recordingStartTime > 500 && recordedChunks.length > 0) {
@@ -487,30 +483,78 @@ function stopRecording() {
     }
 }
 
-function setupHoldToRecord(btn, type) {
-    if (!btn) return;
+// ═══════════════ DYNAMIC BUTTON LOGIC ═══════════════
+const SVGS = {
+    voice: `<svg class="icon-mic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`,
+    video: `<svg class="icon-video" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>`,
+    send: `<svg class="icon-send" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`
+};
+
+let currentMediaMode = 'voice'; // 'voice' or 'video'
+let btnHoldTimer = null;
+let isBtnHeld = false;
+
+function updateDynamicBtn() {
+    const text = lunaTextInput.value.trim();
+    if (text) {
+        lunaDynamicBtn.innerHTML = SVGS.send;
+        lunaDynamicBtn.title = "Send";
+    } else {
+        lunaDynamicBtn.innerHTML = SVGS[currentMediaMode];
+        lunaDynamicBtn.title = currentMediaMode === 'voice' ? 'Record Voice' : 'Record Video Note';
+    }
+}
+
+function setupDynamicBtn() {
+    if (!lunaDynamicBtn) return;
     
     const startAction = (e) => {
         if (e.type === 'pointerdown' && e.button !== 0 && e.pointerType === 'mouse') return;
         e.preventDefault();
-        btn.setPointerCapture(e.pointerId);
-        startRecording(type);
+        
+        const text = lunaTextInput.value.trim();
+        if (text) return; // If text is present, do nothing on mousedown
+        
+        lunaDynamicBtn.setPointerCapture(e.pointerId);
+        isBtnHeld = false;
+        
+        // Wait 300ms to distinguish between tap (toggle) and hold (record)
+        btnHoldTimer = setTimeout(() => {
+            isBtnHeld = true;
+            startRecording(currentMediaMode === 'voice' ? 'audio' : 'video');
+        }, 300);
     };
 
     const stopAction = (e) => {
-        if (btn.hasPointerCapture(e.pointerId)) {
-            btn.releasePointerCapture(e.pointerId);
+        if (lunaDynamicBtn.hasPointerCapture(e.pointerId)) {
+            lunaDynamicBtn.releasePointerCapture(e.pointerId);
         }
-        stopRecording();
+        
+        clearTimeout(btnHoldTimer);
+        
+        const text = lunaTextInput.value.trim();
+        if (text) {
+            if (e.type === 'pointerup') lunaSendText();
+            return;
+        }
+
+        if (isBtnHeld) {
+            // It was a hold -> stop recording
+            stopRecording();
+        } else if (e.type === 'pointerup') {
+            // It was a short tap -> toggle mode
+            currentMediaMode = currentMediaMode === 'voice' ? 'video' : 'voice';
+            updateDynamicBtn();
+        }
+        isBtnHeld = false;
     };
 
-    btn.addEventListener('pointerdown', startAction);
-    btn.addEventListener('pointerup', stopAction);
-    btn.addEventListener('pointercancel', stopAction);
+    lunaDynamicBtn.addEventListener('pointerdown', startAction);
+    lunaDynamicBtn.addEventListener('pointerup', stopAction);
+    lunaDynamicBtn.addEventListener('pointercancel', stopAction);
 }
 
-setupHoldToRecord(lunaRecordVoiceBtn, 'audio');
-setupHoldToRecord(lunaRecordVideoBtn, 'video');
+setupDynamicBtn();
 
 if (flipCameraBtn) {
     flipCameraBtn.addEventListener('click', async () => {

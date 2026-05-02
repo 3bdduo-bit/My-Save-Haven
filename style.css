@@ -167,15 +167,17 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
 }
 #lunaTextInput:focus{border-color:#c9a0dc}
 
-/* Action Buttons (Mic & Video) */
-.luna-action-btn {
-    width: 42px; height: 42px; border-radius: 12px; border: none; background: rgba(200,180,220,0.15);
-    color: #b0a0c0; display: flex; align-items: center; justify-content: center; cursor: pointer;
-    transition: background 0.2s, color 0.2s, transform 0.2s; flex-shrink: 0;
+/* Dynamic Action Button (WhatsApp Style) */
+.luna-dynamic-btn {
+    width: 42px; height: 42px; border-radius: 50%; border: none;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); flex-shrink: 0;
+    background: linear-gradient(135deg,#e8b4d8,#c9a0dc); color: #fff;
+    box-shadow: 0 3px 12px rgba(200,160,220,0.35);
 }
-.luna-action-btn:hover { background: rgba(200,180,220,0.3); color: #8a6aaa; }
-.luna-action-btn.recording {
-    background: #ffebee; color: #e74c6f; animation: pulseRed 1.5s infinite;
+.luna-dynamic-btn:hover { transform: scale(1.08); box-shadow: 0 4px 16px rgba(200,160,220,0.5); }
+.luna-dynamic-btn.recording {
+    background: #e74c6f; animation: pulseRed 1.5s infinite;
 }
 @keyframes pulseRed {
     0% { box-shadow: 0 0 0 0 rgba(231, 76, 111, 0.4); }
@@ -203,14 +205,6 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
     transition: transform 0.2s;
 }
 .flip-camera-btn:hover { transform: scale(1.1); }
-
-.luna-send-btn{
-    width:42px;height:42px;border:none;border-radius:12px;cursor:pointer;
-    background:linear-gradient(135deg,#e8b4d8,#c9a0dc);color:#fff;
-    display:flex;align-items:center;justify-content:center;
-    transition:transform .2s,box-shadow .2s;flex-shrink:0;
-}
-.luna-send-btn:hover{transform:scale(1.08);box-shadow:0 3px 12px rgba(200,160,220,.35)}
 
 /* Hearts Particles */
 .hearts-container{position:fixed;inset:0;pointer-events:none;z-index:50;overflow:hidden}
