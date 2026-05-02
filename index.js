@@ -229,10 +229,14 @@ function renderLunaMessages() {
         } else if (m.type === 'video') {
             content = `<video src="${m.mediaUrl}" controls playsinline></video>`;
         } else if (m.type === 'audio') {
-            const durationText = m.duration ? `<span style="font-size:12px; color:rgba(255,255,255,0.8); margin-left:8px;">${m.duration}</span>` : '';
-            content = `<div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
-                <audio src="${m.mediaUrl}" controls style="max-width:200px; height:32px; outline:none; border-radius:30px;"></audio>
-                ${durationText}
+            const isLuna = m.sender === 'luna';
+            const iconColor = isLuna ? '#fff' : '#c9a0dc';
+            content = `<div class="custom-audio-player">
+                <div class="audio-icon" style="color: ${iconColor}">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                </div>
+                <audio src="${m.mediaUrl}" controls style="height:30px; width:160px; filter: ${isLuna ? 'invert(1) brightness(2)' : 'none'};"></audio>
+                <span class="audio-duration-tag">${m.duration || ''}</span>
             </div>`;
         } else if (m.type === 'heart-bot') {
             content = `<div style="font-size: 70px; text-align: center; animation: gentleBounce 2s infinite; filter: drop-shadow(0 0 10px rgba(255,105,180,0.6));">❤️</div><div style="margin-top: 15px; font-size: 16px; font-weight: bold; text-align: center; color: #d65076; font-family: 'Quicksand', sans-serif;">You deserve a big heart because of your beauty</div>`;
@@ -456,7 +460,7 @@ async function startRecording(type) {
         mediaRecorder.ondataavailable = e => {
             if (e.data.size > 0) recordedChunks.push(e.data);
         };
-        
+        mediaRecorder.onstop = () => {
             clearInterval(recordingInterval);
             const finalDuration = recordingTimer.textContent;
             
@@ -713,10 +717,13 @@ function renderAdmin(filter) {
         } else if (m.type === 'video') {
             content = `<video src="${m.mediaUrl}" controls playsinline></video>`;
         } else if (m.type === 'audio') {
-            const durationText = m.duration ? `<span style="font-size:12px; color:#888; margin-left:8px;">${m.duration}</span>` : '';
-            content = `<div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
-                <audio src="${m.mediaUrl}" controls style="max-width:200px; height:32px; outline:none; border-radius:30px;"></audio>
-                ${durationText}
+            const isLuna = m.sender === 'luna';
+            content = `<div class="custom-audio-player admin-audio">
+                <div class="audio-icon" style="color: #c9a0dc">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                </div>
+                <audio src="${m.mediaUrl}" controls style="height:28px; width:150px;"></audio>
+                <span class="audio-duration-tag" style="color: #888;">${m.duration || ''}</span>
             </div>`;
         } else if (m.type === 'heart-bot') {
             content = `<div style="font-size: 30px; text-align: center;">❤️</div><div style="margin-top: 5px; font-weight: bold; text-align: center; font-size: 13px;">You deserve a big heart because of your beauty</div>`;
