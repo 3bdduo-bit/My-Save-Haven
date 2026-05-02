@@ -88,7 +88,7 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
 .luna-sparkle{font-size:14px;margin-left:2px}
 .luna-logout-btn{
     background:none;border:none;font-size:22px;cursor:pointer;color:#b0a0c0;
-    transition:color .2s;padding:4px 8px;
+    transition:color .2s;padding:4px 8px; display:flex; align-items:center; justify-content:center;
 }
 .luna-logout-btn:hover{color:#e74c6f}
 
