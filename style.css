@@ -179,6 +179,16 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
 .luna-dynamic-btn.recording {
     background: #e74c6f; animation: pulseRed 1.5s infinite;
 }
+
+.recording-timer {
+    font-size: 16px; font-weight: 600; color: #e74c6f; margin: 0 10px;
+    animation: pulseText 1s infinite alternate;
+}
+
+@keyframes pulseText {
+    from { opacity: 1; } to { opacity: 0.5; }
+}
+
 @keyframes pulseRed {
     0% { box-shadow: 0 0 0 0 rgba(231, 76, 111, 0.4); }
     70% { box-shadow: 0 0 0 10px rgba(231, 76, 111, 0); }

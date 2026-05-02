@@ -46,6 +46,7 @@ const loginError      = $('loginError');
 const lunaChat        = $('lunaChat');
 const lunaMessages    = $('lunaMessages');
 const lunaTextInput   = $('lunaTextInput');
+const recordingTimer  = $('recordingTimer');
 const lunaDynamicBtn  = $('lunaDynamicBtn');
 const recordingPreviewContainer = $('recordingPreviewContainer');
 const recordingPreview = $('recordingPreview');
@@ -228,7 +229,11 @@ function renderLunaMessages() {
         } else if (m.type === 'video') {
             content = `<video src="${m.mediaUrl}" controls playsinline></video>`;
         } else if (m.type === 'audio') {
-            content = `<audio src="${m.mediaUrl}" controls style="max-width:200px; margin-top:6px; outline:none; border-radius:30px;"></audio>`;
+            const durationText = m.duration ? `<span style="font-size:12px; color:rgba(255,255,255,0.8); margin-left:8px;">${m.duration}</span>` : '';
+            content = `<div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
+                <audio src="${m.mediaUrl}" controls style="max-width:200px; height:32px; outline:none; border-radius:30px;"></audio>
+                ${durationText}
+            </div>`;
         } else if (m.type === 'heart-bot') {
             content = `<div style="font-size: 70px; text-align: center; animation: gentleBounce 2s infinite; filter: drop-shadow(0 0 10px rgba(255,105,180,0.6));">❤️</div><div style="margin-top: 15px; font-size: 16px; font-weight: bold; text-align: center; color: #d65076; font-family: 'Quicksand', sans-serif;">You deserve a big heart because of your beauty</div>`;
         }
@@ -411,6 +416,14 @@ let currentFacingMode = 'user'; // Front camera by default
 let isRecording = false;
 let recordingType = null;
 let recordingStartTime = 0;
+let recordingInterval = null;
+
+function updateTimer() {
+    const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+    const m = Math.floor(elapsed / 60);
+    const s = elapsed % 60;
+    recordingTimer.textContent = `${m}:${s < 10 ? '0' : ''}${s}`;
+}
 
 async function startRecording(type) {
     if (isRecording) return;
@@ -432,6 +445,10 @@ async function startRecording(type) {
             recordingPreviewContainer.classList.remove('hidden');
         }
         lunaDynamicBtn.classList.add('recording');
+        lunaTextInput.classList.add('hidden');
+        recordingTimer.classList.remove('hidden');
+        recordingTimer.textContent = '0:00';
+        recordingInterval = setInterval(updateTimer, 1000);
 
         mediaRecorder = new MediaRecorder(recordingStream);
         recordedChunks = [];
@@ -440,7 +457,9 @@ async function startRecording(type) {
             if (e.data.size > 0) recordedChunks.push(e.data);
         };
         
-        mediaRecorder.onstop = () => {
+            clearInterval(recordingInterval);
+            const finalDuration = recordingTimer.textContent;
+            
             const blob = new Blob(recordedChunks, { type: type === 'video' ? 'video/webm' : 'audio/webm' });
             if (recordingStream) {
                 recordingStream.getTracks().forEach(track => track.stop());
@@ -450,6 +469,8 @@ async function startRecording(type) {
             recordingPreviewContainer.classList.add('hidden');
             recordingPreview.srcObject = null;
             lunaDynamicBtn.classList.remove('recording');
+            lunaTextInput.classList.remove('hidden');
+            recordingTimer.classList.add('hidden');
             
             // Only send if recording is > 500ms
             if (Date.now() - recordingStartTime > 500 && recordedChunks.length > 0) {
@@ -459,7 +480,8 @@ async function startRecording(type) {
                     msgs.push({
                         id: nextId(msgs), sender:'luna', type: type,
                         content: '', timestamp: new Date().toISOString(),
-                        mediaUrl: reader.result, deletedByLuna: false
+                        mediaUrl: reader.result, deletedByLuna: false,
+                        duration: finalDuration
                     });
                     saveMessages(msgs);
                     renderLunaMessages();
@@ -691,7 +713,11 @@ function renderAdmin(filter) {
         } else if (m.type === 'video') {
             content = `<video src="${m.mediaUrl}" controls playsinline></video>`;
         } else if (m.type === 'audio') {
-            content = `<audio src="${m.mediaUrl}" controls style="max-width:200px; margin-top:6px; outline:none; border-radius:30px;"></audio>`;
+            const durationText = m.duration ? `<span style="font-size:12px; color:#888; margin-left:8px;">${m.duration}</span>` : '';
+            content = `<div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
+                <audio src="${m.mediaUrl}" controls style="max-width:200px; height:32px; outline:none; border-radius:30px;"></audio>
+                ${durationText}
+            </div>`;
         } else if (m.type === 'heart-bot') {
             content = `<div style="font-size: 30px; text-align: center;">❤️</div><div style="margin-top: 5px; font-weight: bold; text-align: center; font-size: 13px;">You deserve a big heart because of your beauty</div>`;
         }
