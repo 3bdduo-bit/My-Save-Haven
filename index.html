@@ -105,7 +105,12 @@
     </div>
 
     <!-- Floating Video Preview for Recording -->
-    <video id="recordingPreview" class="recording-preview hidden" autoplay muted playsinline></video>
+    <div id="recordingPreviewContainer" class="recording-preview-container hidden">
+        <video id="recordingPreview" class="recording-preview" autoplay muted playsinline></video>
+        <button id="flipCameraBtn" class="flip-camera-btn" title="Flip Camera">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"></path><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><path d="M7 23l-4-4 4-4"></path><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+        </button>
+    </div>
 
     <!-- Scroll to bottom button -->
     <button id="lunaScrollBottom" class="scroll-bottom-btn" title="Scroll to bottom">↓</button>

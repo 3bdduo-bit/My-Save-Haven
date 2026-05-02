@@ -49,7 +49,9 @@ const lunaTextInput   = $('lunaTextInput');
 const lunaSendBtn     = $('lunaSendBtn');
 const lunaRecordVoiceBtn = $('lunaRecordVoiceBtn');
 const lunaRecordVideoBtn = $('lunaRecordVideoBtn');
+const recordingPreviewContainer = $('recordingPreviewContainer');
 const recordingPreview = $('recordingPreview');
+const flipCameraBtn   = $('flipCameraBtn');
 const lunaFileInput   = $('lunaFileInput');
 const lunaLogout      = $('lunaLogout');
 const lunaScrollBottom = $('lunaScrollBottom');
@@ -406,15 +408,29 @@ lunaChat.addEventListener('drop', e => {
 let mediaRecorder = null;
 let recordedChunks = [];
 let recordingStream = null;
+let currentFacingMode = 'user'; // Front camera by default
+let isRecording = false;
+let recordingType = null;
+let recordingStartTime = 0;
 
 async function startRecording(type) {
+    if (isRecording) return;
     try {
-        const constraints = type === 'video' ? { video: true, audio: true } : { audio: true };
+        const constraints = type === 'video' ? { video: { facingMode: currentFacingMode }, audio: true } : { audio: true };
         recordingStream = await navigator.mediaDevices.getUserMedia(constraints);
         
+        recordingType = type;
+        isRecording = true;
+        recordingStartTime = Date.now();
+
         if (type === 'video') {
             recordingPreview.srcObject = recordingStream;
-            recordingPreview.classList.remove('hidden');
+            if (currentFacingMode === 'user') {
+                recordingPreview.classList.add('mirrored');
+            } else {
+                recordingPreview.classList.remove('mirrored');
+            }
+            recordingPreviewContainer.classList.remove('hidden');
             lunaRecordVideoBtn.classList.add('recording');
         } else {
             lunaRecordVoiceBtn.classList.add('recording');
@@ -429,42 +445,104 @@ async function startRecording(type) {
         
         mediaRecorder.onstop = () => {
             const blob = new Blob(recordedChunks, { type: type === 'video' ? 'video/webm' : 'audio/webm' });
-            recordingStream.getTracks().forEach(track => track.stop());
+            if (recordingStream) {
+                recordingStream.getTracks().forEach(track => track.stop());
+            }
             recordingStream = null;
-            recordingPreview.classList.add('hidden');
+            isRecording = false;
+            recordingPreviewContainer.classList.add('hidden');
             recordingPreview.srcObject = null;
             lunaRecordVideoBtn.classList.remove('recording');
             lunaRecordVoiceBtn.classList.remove('recording');
             
-            const reader = new FileReader();
-            reader.onload = () => {
-                pendingMedia = { type: type, dataUrl: reader.result };
-                if (type === 'video') {
-                    lunaPreviewContent.innerHTML = `<video src="${reader.result}" controls style="max-width:100%;max-height:50vh;border-radius:12px"></video>`;
-                } else {
-                    lunaPreviewContent.innerHTML = `<audio src="${reader.result}" controls style="width:100%; margin:20px 0; outline:none;"></audio>`;
-                }
-                lunaMediaPreview.classList.remove('hidden');
-            };
-            reader.readAsDataURL(blob);
+            // Only send if recording is > 500ms
+            if (Date.now() - recordingStartTime > 500 && recordedChunks.length > 0) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const msgs = getMessages();
+                    msgs.push({
+                        id: nextId(msgs), sender:'luna', type: type,
+                        content: '', timestamp: new Date().toISOString(),
+                        mediaUrl: reader.result, deletedByLuna: false
+                    });
+                    saveMessages(msgs);
+                    renderLunaMessages();
+                    scrollLuna();
+                    spawnHearts();
+                };
+                reader.readAsDataURL(blob);
+            }
         };
         
         mediaRecorder.start();
     } catch (err) {
         alert('Microphone/Camera access denied or unavailable.');
+        isRecording = false;
     }
 }
 
-function toggleRecording(type) {
+function stopRecording() {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
-    } else {
-        startRecording(type);
     }
 }
 
-if(lunaRecordVoiceBtn) lunaRecordVoiceBtn.addEventListener('click', () => toggleRecording('audio'));
-if(lunaRecordVideoBtn) lunaRecordVideoBtn.addEventListener('click', () => toggleRecording('video'));
+function setupHoldToRecord(btn, type) {
+    if (!btn) return;
+    
+    const startAction = (e) => {
+        if (e.type === 'pointerdown' && e.button !== 0 && e.pointerType === 'mouse') return;
+        e.preventDefault();
+        btn.setPointerCapture(e.pointerId);
+        startRecording(type);
+    };
+
+    const stopAction = (e) => {
+        if (btn.hasPointerCapture(e.pointerId)) {
+            btn.releasePointerCapture(e.pointerId);
+        }
+        stopRecording();
+    };
+
+    btn.addEventListener('pointerdown', startAction);
+    btn.addEventListener('pointerup', stopAction);
+    btn.addEventListener('pointercancel', stopAction);
+}
+
+setupHoldToRecord(lunaRecordVoiceBtn, 'audio');
+setupHoldToRecord(lunaRecordVideoBtn, 'video');
+
+if (flipCameraBtn) {
+    flipCameraBtn.addEventListener('click', async () => {
+        // Toggle camera
+        currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+        
+        // If currently recording video, we need to restart the stream
+        if (isRecording && recordingType === 'video' && recordingStream) {
+            // Stop old video track
+            const oldVideoTrack = recordingStream.getVideoTracks()[0];
+            if (oldVideoTrack) oldVideoTrack.stop();
+            
+            try {
+                const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
+                const newVideoTrack = newStream.getVideoTracks()[0];
+                
+                // Remove old, add new
+                if (oldVideoTrack) recordingStream.removeTrack(oldVideoTrack);
+                recordingStream.addTrack(newVideoTrack);
+                
+                // Update preview mirroring
+                if (currentFacingMode === 'user') {
+                    recordingPreview.classList.add('mirrored');
+                } else {
+                    recordingPreview.classList.remove('mirrored');
+                }
+            } catch (err) {
+                console.error("Failed to flip camera", err);
+            }
+        }
+    });
+}
 
 lunaPreviewClose.addEventListener('click', () => {
     lunaMediaPreview.classList.add('hidden');
