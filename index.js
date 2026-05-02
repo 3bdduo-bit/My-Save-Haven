@@ -59,6 +59,7 @@ const lunaMediaPreview  = $('lunaMediaPreview');
 const lunaPreviewContent = $('lunaPreviewContent');
 const lunaPreviewClose  = $('lunaPreviewClose');
 const lunaPreviewSend   = $('lunaPreviewSend');
+const lunaToggleSaved   = $('lunaToggleSaved');
 
 const malakWelcome    = $('malakWelcome');
 
@@ -77,6 +78,7 @@ const adminSearch     = $('adminSearch');
 const adminExportBtn  = $('adminExportBtn');
 const adminClearBtn   = $('adminClearBtn');
 const adminToggleDeletedBtn = $('adminToggleDeletedBtn');
+const adminToggleSavedBtn   = $('adminToggleSavedBtn');
 const adminScrollBottom = $('adminScrollBottom');
 
 const lightbox        = $('lightbox');
@@ -89,6 +91,8 @@ let pendingMedia = null;      // { type, dataUrl }
 let adminPollTimer = null;
 let editingMsgId = null;
 let adminShowDeleted = false;
+let adminShowSaved = false;
+let lunaShowSaved = false;
 
 /* ═══════════════ HELPERS ═══════════════ */
 function getMessages() {
@@ -209,9 +213,14 @@ adminLogout.addEventListener('click', () => { clearSession(); showScreen(null); 
 
 /* ═══════════════ LUNA — RENDER ═══════════════ */
 function renderLunaMessages() {
-    const msgs = getMessages().filter(m => !m.deletedByLuna);
+    let msgs = getMessages().filter(m => !m.deletedByLuna);
+    
+    if (lunaShowSaved) {
+        msgs = msgs.filter(m => m.savedByLuna);
+    }
+
     if (!msgs.length) {
-        lunaMessages.innerHTML = '<div class="empty-state"><span>💬</span>No messages yet</div>';
+        lunaMessages.innerHTML = `<div class="empty-state"><span>${lunaShowSaved ? '⭐' : '💬'}</span>${lunaShowSaved ? 'No saved messages' : 'No messages yet'}</div>`;
         return;
     }
     let html = '';
@@ -249,6 +258,7 @@ function renderLunaMessages() {
         let senderBadge = isLuna ? '' : '<span class="am-sender-badge">🛡️ Admin Reply</span>';
         const readReceipt = '';
         const reactionBadge = m.reaction ? `<div class="reaction-badge" onclick="toggleReaction(${m.id}, event)">${m.reaction}</div>` : '';
+        const savedBadge = m.savedByLuna ? `<div class="saved-badge">⭐ Saved</div>` : '';
         
         if (m.type === 'heart-bot') {
             cls = 'heart-bot-bubble';
@@ -256,13 +266,16 @@ function renderLunaMessages() {
         }
         
         let actionBtns = '';
+        const saveIcon = m.savedByLuna ? '⭐' : '☆';
         if (isLuna && m.type === 'text') {
             actionBtns = `<div class="msg-actions">
+                <button onclick="toggleSave(${m.id})" title="Save">${saveIcon}</button>
                 <button onclick="openEditModal(${m.id})" title="Edit">✎</button>
                 <button onclick="deleteMsg(${m.id})" title="Delete">🗑️</button>
             </div>`;
         } else {
             actionBtns = `<div class="msg-actions">
+                <button onclick="toggleSave(${m.id})" title="Save">${saveIcon}</button>
                 <button onclick="deleteMsg(${m.id})" title="Delete">🗑️</button>
             </div>`;
         }
@@ -283,6 +296,7 @@ function renderLunaMessages() {
             ${timeRow}
             ${actionBtns}
             ${reactionBadge}
+            ${savedBadge}
         </div>`;
     });
     lunaMessages.innerHTML = html;
@@ -300,6 +314,17 @@ window.deleteMsg = function(id) {
         msgs[idx].deletedByLuna = true;
         saveMessages(msgs);
         renderLunaMessages();
+    }
+};
+
+window.toggleSave = function(id) {
+    const msgs = getMessages();
+    const idx = msgs.findIndex(m => m.id === id);
+    if (idx !== -1) {
+        msgs[idx].savedByLuna = !msgs[idx].savedByLuna;
+        saveMessages(msgs);
+        if (currentRole === 'luna') renderLunaMessages();
+        if (currentRole === 'admin') renderAdmin();
     }
 };
 
@@ -685,6 +710,8 @@ function renderAdmin(filter) {
         // Filter by Deleted status
         if (adminShowDeleted) {
             if (!m.deletedByLuna) return false;
+        } else if (adminShowSaved) {
+            if (!m.savedByLuna || m.deletedByLuna) return false;
         } else {
             if (m.deletedByLuna) return false;
         }
@@ -738,6 +765,7 @@ function renderAdmin(filter) {
             content = `<div style="font-size: 30px; text-align: center;">❤️</div><div style="margin-top: 5px; font-weight: bold; text-align: center; font-size: 13px;">You deserve a big heart because of your beauty</div>`;
         }
         const reactionBadge = m.reaction ? `<div class="reaction-badge" onclick="toggleReaction(${m.id}, event)">${m.reaction}</div>` : '';
+        const savedBadge = m.savedByLuna ? `<div class="saved-badge">⭐ Saved by Malak</div>` : '';
 
         html += `<div class="admin-msg ${cls}" data-id="${m.id}" ondblclick="toggleReaction(${m.id}, event)">
             <div class="am-sender">${senderLabel} ${m.deletedByLuna ? '<span style="color:#e74c6f;font-size:10px;margin-left:4px;">(Deleted by Malak)</span>' : ''}</div>
@@ -747,6 +775,7 @@ function renderAdmin(filter) {
                 ${isLuna ? `<span style="color:#888;font-size:10px;">${m.read ? 'Read ✓✓' : 'Delivered ✓'}</span>` : ''}
             </div>
             ${reactionBadge}
+            ${savedBadge}
         </div>`;
     });
     adminMessages.innerHTML = html;
@@ -759,10 +788,44 @@ adminSearch.addEventListener('input', () => renderAdmin());
 if (adminToggleDeletedBtn) {
     adminToggleDeletedBtn.addEventListener('click', () => {
         adminShowDeleted = !adminShowDeleted;
+        adminShowSaved = false; // mutually exclusive
         adminToggleDeletedBtn.textContent = adminShowDeleted ? '💬 Active Chat' : '🗑️ Deleted';
         adminToggleDeletedBtn.style.background = adminShowDeleted ? '#e8f5e9' : '#e8eaf6';
         adminToggleDeletedBtn.style.color = adminShowDeleted ? '#2e7d32' : '#5c6bc0';
+        
+        // Reset Saved button
+        adminToggleSavedBtn.classList.remove('active');
+        adminToggleSavedBtn.textContent = '⭐ Saved';
+        adminToggleSavedBtn.style.background = '#e8eaf6';
+        adminToggleSavedBtn.style.color = '#5c6bc0';
+        
         renderAdmin();
+    });
+}
+
+if (adminToggleSavedBtn) {
+    adminToggleSavedBtn.addEventListener('click', () => {
+        adminShowSaved = !adminShowSaved;
+        adminShowDeleted = false; // mutually exclusive
+        adminToggleSavedBtn.classList.toggle('active', adminShowSaved);
+        adminToggleSavedBtn.textContent = adminShowSaved ? '💬 Active Chat' : '⭐ Saved';
+        adminToggleSavedBtn.style.background = adminShowSaved ? '#fff9c4' : '#e8eaf6';
+        adminToggleSavedBtn.style.color = adminShowSaved ? '#fbc02d' : '#5c6bc0';
+        
+        // Reset Deleted button
+        adminToggleDeletedBtn.textContent = '🗑️ Deleted';
+        adminToggleDeletedBtn.style.background = '#e8eaf6';
+        adminToggleSavedBtn.style.color = '#5c6bc0';
+        
+        renderAdmin();
+    });
+}
+
+if (lunaToggleSaved) {
+    lunaToggleSaved.addEventListener('click', () => {
+        lunaShowSaved = !lunaShowSaved;
+        lunaToggleSaved.classList.toggle('active', lunaShowSaved);
+        renderLunaMessages();
     });
 }
 

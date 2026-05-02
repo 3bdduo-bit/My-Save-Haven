@@ -86,6 +86,14 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
 }
 .luna-name{font-size:18px;font-weight:700;color:#5a4a6a}
 .luna-sparkle{font-size:14px;margin-left:2px}
+.luna-topbar-right{display:flex;align-items:center;gap:12px}
+.luna-saved-toggle {
+    background: none; border: none; font-size: 20px; cursor: pointer; color: #b0a0c0;
+    transition: all 0.2s; padding: 4px; display: flex; align-items: center; justify-content: center;
+}
+.luna-saved-toggle:hover { color: #ffd700; transform: scale(1.1); }
+.luna-saved-toggle.active { color: #ffd700; filter: drop-shadow(0 0 5px rgba(255,215,0,0.5)); }
+
 .luna-logout-btn{
     background:none;border:none;font-size:22px;cursor:pointer;color:#b0a0c0;
     transition:color .2s;padding:4px 8px; display:flex; align-items:center; justify-content:center;
@@ -525,6 +533,17 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
 .reaction-badge:hover { transform: scale(1.1); }
 .admin-bubble-in-luna .reaction-badge { right: auto; left: 10px; }
 .admin-msg.luna-sent .reaction-badge { right: auto; left: 10px; }
+
+/* Saved Badge */
+.saved-badge {
+    position: absolute; bottom: -10px; left: 10px; background: #fff; border-radius: 12px;
+    padding: 2px 6px; font-size: 11px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border: 1px solid #fff9c4; color: #fbc02d; font-weight: 700; z-index: 2;
+    animation: popIn 0.3s ease;
+}
+.luna-bubble .saved-badge { left: auto; right: 10px; bottom: -10px; }
+.admin-bubble-in-luna .saved-badge { left: 10px; }
+.admin-msg .saved-badge { left: 10px; }
 
 /* Heart Bot Message Styling */
 .heart-bot-bubble {
