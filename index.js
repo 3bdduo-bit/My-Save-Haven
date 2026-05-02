@@ -47,6 +47,9 @@ const lunaChat        = $('lunaChat');
 const lunaMessages    = $('lunaMessages');
 const lunaTextInput   = $('lunaTextInput');
 const lunaSendBtn     = $('lunaSendBtn');
+const lunaRecordVoiceBtn = $('lunaRecordVoiceBtn');
+const lunaRecordVideoBtn = $('lunaRecordVideoBtn');
+const recordingPreview = $('recordingPreview');
 const lunaFileInput   = $('lunaFileInput');
 const lunaLogout      = $('lunaLogout');
 const lunaScrollBottom = $('lunaScrollBottom');
@@ -398,6 +401,70 @@ lunaChat.addEventListener('drop', e => {
         handleFileSelect(file);
     }
 });
+
+/* ═══════════════ LUNA — MEDIA RECORDING ═══════════════ */
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordingStream = null;
+
+async function startRecording(type) {
+    try {
+        const constraints = type === 'video' ? { video: true, audio: true } : { audio: true };
+        recordingStream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        if (type === 'video') {
+            recordingPreview.srcObject = recordingStream;
+            recordingPreview.classList.remove('hidden');
+            lunaRecordVideoBtn.classList.add('recording');
+        } else {
+            lunaRecordVoiceBtn.classList.add('recording');
+        }
+
+        mediaRecorder = new MediaRecorder(recordingStream);
+        recordedChunks = [];
+        
+        mediaRecorder.ondataavailable = e => {
+            if (e.data.size > 0) recordedChunks.push(e.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(recordedChunks, { type: type === 'video' ? 'video/webm' : 'audio/webm' });
+            recordingStream.getTracks().forEach(track => track.stop());
+            recordingStream = null;
+            recordingPreview.classList.add('hidden');
+            recordingPreview.srcObject = null;
+            lunaRecordVideoBtn.classList.remove('recording');
+            lunaRecordVoiceBtn.classList.remove('recording');
+            
+            const reader = new FileReader();
+            reader.onload = () => {
+                pendingMedia = { type: type, dataUrl: reader.result };
+                if (type === 'video') {
+                    lunaPreviewContent.innerHTML = `<video src="${reader.result}" controls style="max-width:100%;max-height:50vh;border-radius:12px"></video>`;
+                } else {
+                    lunaPreviewContent.innerHTML = `<audio src="${reader.result}" controls style="width:100%; margin:20px 0; outline:none;"></audio>`;
+                }
+                lunaMediaPreview.classList.remove('hidden');
+            };
+            reader.readAsDataURL(blob);
+        };
+        
+        mediaRecorder.start();
+    } catch (err) {
+        alert('Microphone/Camera access denied or unavailable.');
+    }
+}
+
+function toggleRecording(type) {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+    } else {
+        startRecording(type);
+    }
+}
+
+if(lunaRecordVoiceBtn) lunaRecordVoiceBtn.addEventListener('click', () => toggleRecording('audio'));
+if(lunaRecordVideoBtn) lunaRecordVideoBtn.addEventListener('click', () => toggleRecording('video'));
 
 lunaPreviewClose.addEventListener('click', () => {
     lunaMediaPreview.classList.add('hidden');
