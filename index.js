@@ -830,4 +830,5 @@ function escapeHtml(str) {
     } else {
         showScreen(null);
     }
+    if (typeof updateDynamicBtn === 'function') updateDynamicBtn();
 })();
