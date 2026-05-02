@@ -60,6 +60,7 @@ const lunaPreviewContent = $('lunaPreviewContent');
 const lunaPreviewClose  = $('lunaPreviewClose');
 const lunaPreviewSend   = $('lunaPreviewSend');
 const lunaToggleSaved   = $('lunaToggleSaved');
+const lunaRefresh       = $('lunaRefresh');
 
 const malakWelcome    = $('malakWelcome');
 
@@ -77,6 +78,7 @@ const adminLogout     = $('adminLogout');
 const adminSearch     = $('adminSearch');
 const adminToggleDeletedBtn = $('adminToggleDeletedBtn');
 const adminToggleSavedBtn   = $('adminToggleSavedBtn');
+const adminRefresh      = $('adminRefresh');
 const adminScrollBottom = $('adminScrollBottom');
 
 const lightbox        = $('lightbox');
@@ -208,6 +210,10 @@ loginForm.addEventListener('submit', e => {
 /* ═══════════════ LOGOUT ═══════════════ */
 lunaLogout.addEventListener('click', () => { clearSession(); showScreen(null); });
 adminLogout.addEventListener('click', () => { clearSession(); showScreen(null); });
+
+/* ═══════════════ REFRESH ═══════════════ */
+if (lunaRefresh) lunaRefresh.addEventListener('click', () => window.location.reload());
+if (adminRefresh) adminRefresh.addEventListener('click', () => window.location.reload());
 
 /* ═══════════════ LUNA — RENDER ═══════════════ */
 function renderLunaMessages() {

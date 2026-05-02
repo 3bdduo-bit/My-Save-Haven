@@ -96,11 +96,12 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
 .luna-saved-toggle:hover { color: #ffd700; transform: scale(1.1); }
 .luna-saved-toggle.active { color: #ffd700; filter: drop-shadow(0 0 5px rgba(255,215,0,0.5)); }
 
-.luna-logout-btn{
+.luna-logout-btn, .luna-refresh-btn{
     background:none;border:none;font-size:22px;cursor:pointer;color:#b0a0c0;
-    transition:color .2s;padding:4px 8px; display:flex; align-items:center; justify-content:center;
+    transition:all .2s;padding:4px 8px; display:flex; align-items:center; justify-content:center;
 }
 .luna-logout-btn:hover{color:#e74c6f}
+.luna-refresh-btn:hover{color:#c9a0dc; transform: rotate(45deg);}
 
 .luna-messages{
     flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:10px;
@@ -337,12 +338,14 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
 .admin-util-btn:hover { background:#d0d4f0; transform:scale(1.05); }
 .admin-util-btn.clear-btn { background:#ffebee; color:#e53935; }
 .admin-util-btn.clear-btn:hover { background:#ffcdd2; }
-.admin-logout-btn{
+.admin-logout-btn, .admin-refresh-btn{
     padding:8px 18px;border:none;border-radius:8px;cursor:pointer;
     background:#e74c6f;color:#fff;font-family:inherit;font-size:13px;font-weight:600;
-    transition:background .2s;
+    transition:all .2s; display: flex; align-items: center; justify-content: center;
 }
 .admin-logout-btn:hover{background:#d43b5e}
+.admin-refresh-btn { background: #e8eaf6; color: #5c6bc0; padding: 8px 12px; }
+.admin-refresh-btn:hover { background: #d0d4f0; transform: rotate(30deg); }
 
 .admin-body{display:flex;flex:1;overflow:hidden}
 
@@ -567,8 +570,39 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
 /* ═══════════════ RESPONSIVE ═══════════════ */
 @media(max-width:768px){
     .admin-sidebar{display:none}
-    .admin-search{width:140px}
-    .luna-bubble, .admin-bubble-in-luna {max-width:88%}
-    .admin-msg{max-width:90%}
-    .login-card{padding:36px 24px}
+    .admin-search{width:120px}
+    .luna-bubble, .admin-bubble-in-luna {max-width:92%}
+    .admin-msg{max-width:92%}
+    .login-card{padding:30px 20px; width: 92%;}
+    .login-title { font-size: 22px; }
+    .login-subtitle { font-size: 13px; }
+    .login-avatar { font-size: 48px; }
+    .input-wrapper { flex-direction: column; }
+    .login-btn { width: 100%; height: 48px; margin-top: 8px; border-radius: 12px; }
+    
+    /* Mobile Topbar Adjustments */
+    .luna-topbar { padding: 10px 12px; }
+    .luna-saved-toggle span { display: none; } /* Hide text if we had spans, but currently we have text nodes */
+    /* Let's refine the buttons to be more compact */
+    .luna-saved-toggle { padding: 6px 10px; font-size: 12px; }
+    
+    .admin-topbar { padding: 10px 12px; gap: 4px; justify-content: center; }
+    .admin-title { font-size: 16px; width: 100%; text-align: center; margin-bottom: 4px; }
+    .admin-topbar-right { width: 100%; justify-content: space-between; gap: 4px; }
+    .admin-util-btn, .admin-logout-btn, .admin-refresh-btn { padding: 6px 10px; font-size: 11px; flex: 1; text-align: center; justify-content: center; }
+    .admin-search { width: 100%; margin-top: 4px; }
+}
+
+@media(max-width:480px) {
+    .luna-name { font-size: 16px; }
+    .luna-avatar-circle { width: 36px; height: 36px; font-size: 18px; }
+    .luna-saved-toggle { font-size: 0; padding: 8px; } /* Hide text, keep icon if we had one, but we use "⭐ Preferred..." */
+    .luna-saved-toggle::after { content: '⭐'; font-size: 16px; }
+    .luna-saved-toggle { font-size: 0; }
+    
+    .luna-input-area { padding: 10px; }
+    #lunaTextInput { padding: 10px 12px; font-size: 14px; }
+    
+    .welcome-text { font-size: 28px; }
+    .welcome-avatar { font-size: 60px; }
 }
