@@ -75,8 +75,6 @@ const adminReplyInput = $('adminReplyInput');
 const adminReplyBtn   = $('adminReplyBtn');
 const adminLogout     = $('adminLogout');
 const adminSearch     = $('adminSearch');
-const adminExportBtn  = $('adminExportBtn');
-const adminClearBtn   = $('adminClearBtn');
 const adminToggleDeletedBtn = $('adminToggleDeletedBtn');
 const adminToggleSavedBtn   = $('adminToggleSavedBtn');
 const adminScrollBottom = $('adminScrollBottom');
@@ -825,6 +823,13 @@ if (lunaToggleSaved) {
     lunaToggleSaved.addEventListener('click', () => {
         lunaShowSaved = !lunaShowSaved;
         lunaToggleSaved.classList.toggle('active', lunaShowSaved);
+        
+        // Update text and style to be responsive like admin buttons
+        lunaToggleSaved.innerHTML = lunaShowSaved ? '💬 Back to Chat' : '⭐ Preferred Messages';
+        lunaToggleSaved.style.background = lunaShowSaved ? 'rgba(255,255,255,0.7)' : 'rgba(255,215,0,0.05)';
+        lunaToggleSaved.style.color = lunaShowSaved ? '#c9a0dc' : '#b0a0c0';
+        lunaToggleSaved.style.borderColor = lunaShowSaved ? '#c9a0dc' : 'rgba(255,215,0,0.2)';
+        
         renderLunaMessages();
     });
 }
@@ -869,32 +874,6 @@ function adminSendReply() {
 
 adminReplyBtn.addEventListener('click', adminSendReply);
 adminReplyInput.addEventListener('keydown', e => { if (e.key === 'Enter') adminSendReply(); });
-
-/* ═══════════════ ADMIN — UTILS ═══════════════ */
-adminExportBtn.addEventListener('click', () => {
-    const msgs = getMessages();
-    if (!msgs.length) return alert('No messages to export.');
-    let txt = '--- Secret Room Chat Export ---\n\n';
-    msgs.forEach(m => {
-        const time = fmtTime(m.timestamp);
-        const sender = m.sender === 'luna' ? 'Malak' : 'Admin';
-        const contentStr = m.type === 'text' ? m.content : (m.type === 'heart-bot' ? '[Automated Heart Reply]' : `[Attached ${m.type}]`);
-        const content = contentStr + (m.deletedByLuna ? ' (Deleted by Malak)' : '');
-        txt += `[${time}] ${sender}: ${content}\n`;
-    });
-    const blob = new Blob([txt], { type: 'text/plain' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `chat_export_${new Date().getTime()}.txt`;
-    a.click();
-});
-
-adminClearBtn.addEventListener('click', () => {
-    if (confirm('Are you sure you want to completely clear the chat history? This cannot be undone.')) {
-        saveMessages([]);
-        renderAdmin();
-    }
-});
 
 /* ═══════════════ GLOBAL LIGHTBOX ═══════════════ */
 document.addEventListener('click', e => {
