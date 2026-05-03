@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDCLSzy1JRhoZiGQaolmlxTqRH1vob2KC8",
@@ -16,6 +16,7 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 let globalMessages = [];
+let lastSavedMessages = [];
 let lunaProfile = { avatar: '', photoUrl: '', bio: '' };
 
 onValue(ref(db, 'profile'), (snapshot) => {
@@ -28,6 +29,7 @@ onValue(ref(db, 'profile'), (snapshot) => {
 
 onValue(ref(db, 'messages'), (snapshot) => {
     globalMessages = snapshot.val() || [];
+    lastSavedMessages = JSON.parse(JSON.stringify(globalMessages));
     if (typeof currentRole !== 'undefined') {
         if (currentRole === 'luna') {
             if (typeof renderLunaMessages === 'function') renderLunaMessages();
@@ -128,7 +130,33 @@ function getMessages() {
 }
 
 function saveMessages(msgs) {
-    set(ref(db, 'messages'), msgs);
+    if (!lastSavedMessages || msgs.length < lastSavedMessages.length) {
+        set(ref(db, 'messages'), msgs);
+        lastSavedMessages = JSON.parse(JSON.stringify(msgs));
+        return;
+    }
+    
+    let updates = {};
+    let changed = false;
+    
+    msgs.forEach((m, i) => {
+        if (!lastSavedMessages[i]) {
+            updates[`${i}`] = m;
+            changed = true;
+        } else {
+            Object.keys(m).forEach(k => {
+                if (JSON.stringify(m[k]) !== JSON.stringify(lastSavedMessages[i][k])) {
+                    updates[`${i}/${k}`] = m[k];
+                    changed = true;
+                }
+            });
+        }
+    });
+    
+    if (changed) {
+        update(ref(db, 'messages'), updates);
+        lastSavedMessages = JSON.parse(JSON.stringify(msgs));
+    }
 }
 
 function nextId(msgs) {
