@@ -523,6 +523,51 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
     50% { transform: translateY(-20px); }
 }
 
+.welcome-special-note {
+    margin-top: 30px;
+    font-size: 24px;
+    font-style: italic;
+    font-weight: 600;
+    color: #d65076;
+    background: rgba(255, 255, 255, 0.4);
+    padding: 20px;
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 10px 30px rgba(214, 80, 118, 0.1);
+    animation: fadeIn 1.5s ease-out;
+    max-width: 90vw;
+}
+
+.welcome-continue-btn {
+    margin-top: 40px;
+    padding: 16px 40px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #ff8da1, #c9a0dc);
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(201, 160, 220, 0.4);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    animation: slideUp 1s ease-out 0.5s both;
+}
+
+.welcome-continue-btn:hover {
+    transform: scale(1.05) translateY(-3px);
+    box-shadow: 0 15px 35px rgba(201, 160, 220, 0.6);
+}
+
+.welcome-continue-btn:active {
+    transform: scale(0.98);
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 /* Cute Sparkle Layer */
 .sparkle-layer {
     position: fixed; inset: 0; pointer-events: none; z-index: 25; overflow: hidden;
@@ -745,4 +790,6 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
     
     .welcome-text { font-size: 28px; }
     .welcome-avatar { font-size: 60px; }
+    .welcome-special-note { font-size: 18px; padding: 15px; }
+    .welcome-continue-btn { padding: 12px 30px; font-size: 16px; }
 }

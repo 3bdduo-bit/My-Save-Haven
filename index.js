@@ -80,6 +80,7 @@ const stickerPicker     = $('stickerPicker');
 const lunaStickerInput  = $('lunaStickerInput');
 
 const malakWelcome    = $('malakWelcome');
+const welcomeContinueBtn = $('welcomeContinueBtn');
 
 const editModal       = $('editModal');
 const editMessageInput= $('editMessageInput');
@@ -227,12 +228,15 @@ function showScreen(role) {
             if (typeof updateProfileUI === 'function') updateProfileUI();
             if (malakWelcome) {
                 malakWelcome.classList.remove('hidden');
-                setTimeout(() => {
-                    malakWelcome.classList.add('hidden');
-                    lunaChat.classList.remove('hidden');
-                    renderLunaMessages();
-                    scrollLuna();
-                }, 3000);
+                // Removed 3s timeout. Now wait for button click.
+                if (welcomeContinueBtn) {
+                    welcomeContinueBtn.onclick = () => {
+                        malakWelcome.classList.add('hidden');
+                        lunaChat.classList.remove('hidden');
+                        renderLunaMessages();
+                        scrollLuna();
+                    };
+                }
             } else {
                 lunaChat.classList.remove('hidden');
                 renderLunaMessages();
