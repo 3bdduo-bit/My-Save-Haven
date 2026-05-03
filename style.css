@@ -160,19 +160,47 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
 }
 .msg-actions button:hover { background:#fce4ec; color:#e74c6f; transform:scale(1.1); }
 
+/* Stickers */
+.sticker-bubble {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    max-width: 150px !important;
+    animation: msgIn .35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+}
+.admin-bubble-in-luna.sticker-bubble { align-self: flex-start; }
+.luna-bubble.sticker-bubble { align-self: flex-end; }
+.sticker-msg-img {
+    width: 130px; height: 130px; object-fit: contain;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15));
+}
+.sticker-bubble .msg-time {
+    text-align: right; color: #8a7a9a; background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(4px); display: inline-block; padding: 2px 8px;
+    border-radius: 10px; margin-top: -20px; position: relative; z-index: 2;
+}
+.admin-bubble-in-luna.sticker-bubble .msg-time { text-align: left; }
+.sticker-item {
+    width: 45px; height: 45px; cursor: pointer; transition: transform 0.2s; padding: 4px;
+}
+.sticker-item:hover { transform: scale(1.1); }
+
 @keyframes msgIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 
 .luna-input-area{
-    display:flex;align-items:center;gap:8px;padding:12px 16px;
+    display:flex;align-items:flex-end;gap:8px;padding:12px 16px;
     background:rgba(255,255,255,.65);backdrop-filter:blur(12px);
     border-top:1px solid rgba(200,180,220,.15);
 }
-.luna-attach-btn, .luna-emoji-btn{
+.luna-attach-btn, .luna-emoji-btn, .luna-sticker-btn {
     width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;
     cursor:pointer;color:#b0a0c0;background:rgba(200,180,220,.15);
     border:none;transition:background .2s,color .2s;flex-shrink:0;
+    margin-bottom:2px;
 }
-.luna-attach-btn:hover, .luna-emoji-btn:hover{background:rgba(200,180,220,.3);color:#8a6aaa}
+.luna-attach-btn:hover, .luna-emoji-btn:hover, .luna-sticker-btn:hover {background:rgba(200,180,220,.3);color:#8a6aaa}
 
 .emoji-picker {
     position: absolute; bottom: 100%; left: 16px; margin-bottom: 10px;
@@ -192,7 +220,14 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
     flex:1;padding:12px 16px;border:2px solid rgba(200,180,220,.25);border-radius:14px;
     font-family:inherit;font-size:15px;background:rgba(255,255,255,.7);outline:none;
     transition:border .25s;
+    resize:none;
+    overflow-y:auto;
+    max-height:120px;
+    line-height:1.4;
+    display:block;
 }
+#lunaTextInput::-webkit-scrollbar { width: 4px; }
+#lunaTextInput::-webkit-scrollbar-thumb { background: #d4c0e0; border-radius: 4px; }
 #lunaTextInput:focus{border-color:#c9a0dc}
 
 /* Dynamic Action Button (WhatsApp Style) */
@@ -202,6 +237,7 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
     transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); flex-shrink: 0;
     background: linear-gradient(135deg,#e8b4d8,#c9a0dc); color: #fff;
     box-shadow: 0 3px 12px rgba(200,160,220,0.35);
+    margin-bottom: 2px;
 }
 .luna-dynamic-btn:hover { transform: scale(1.08); box-shadow: 0 4px 16px rgba(200,160,220,0.5); }
 .luna-dynamic-btn.recording {

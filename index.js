@@ -73,6 +73,9 @@ const lunaRefresh       = $('lunaRefresh');
 const lunaMoodBtn       = $('lunaMoodBtn');
 const lunaEmojiToggle   = $('lunaEmojiToggle');
 const emojiPicker       = $('emojiPicker');
+const lunaStickerToggle = $('lunaStickerToggle');
+const stickerPicker     = $('stickerPicker');
+const lunaStickerInput  = $('lunaStickerInput');
 
 const malakWelcome    = $('malakWelcome');
 
@@ -357,6 +360,8 @@ function renderLunaMessages() {
         let content = '';
         if (m.type === 'text') {
             content = escapeHtml(m.content);
+        } else if (m.type === 'sticker') {
+            content = `<img src="${m.mediaUrl}" alt="sticker" loading="lazy" class="sticker-msg-img" />`;
         } else if (m.type === 'image') {
             content = `<img src="${m.mediaUrl}" alt="image" loading="lazy"/>`;
         } else if (m.type === 'video') {
@@ -385,6 +390,8 @@ function renderLunaMessages() {
         if (m.type === 'heart-bot') {
             cls = 'heart-bot-bubble';
             senderBadge = '';
+        } else if (m.type === 'sticker') {
+            cls += ' sticker-bubble';
         }
         
         let actionBtns = '';
@@ -510,14 +517,24 @@ function lunaSendText() {
 
     saveMessages(msgs);
     lunaTextInput.value = '';
+    lunaTextInput.style.height = 'auto';
     renderLunaMessages();
     scrollLuna();
     spawnHearts();
     updateDynamicBtn();
 }
 
-lunaTextInput.addEventListener('keydown', e => { if (e.key === 'Enter') lunaSendText(); });
-lunaTextInput.addEventListener('input', () => updateDynamicBtn());
+lunaTextInput.addEventListener('keydown', e => { 
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        lunaSendText();
+    }
+});
+lunaTextInput.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + 'px';
+    updateDynamicBtn();
+});
 
 /* ═══════════════ LUNA — ATTACH MEDIA ═══════════════ */
 function handleFileSelect(file) {
@@ -870,6 +887,9 @@ function renderAdmin(filter) {
         let content = '';
         if (m.type === 'text') {
             content = escapeHtml(m.content);
+        } else if (m.type === 'sticker') {
+            content = `<img src="${m.mediaUrl}" alt="sticker" loading="lazy" class="sticker-msg-img" />`;
+            cls += ' sticker-bubble';
         } else if (m.type === 'image') {
             content = `<img src="${m.mediaUrl}" alt="image" loading="lazy"/>`;
         } else if (m.type === 'video') {
@@ -1067,6 +1087,7 @@ if (lunaEmojiToggle && emojiPicker) {
     lunaEmojiToggle.addEventListener('click', (e) => {
         e.stopPropagation();
         emojiPicker.classList.toggle('hidden');
+        if (stickerPicker) stickerPicker.classList.add('hidden');
     });
     
     document.addEventListener('click', (e) => {
@@ -1082,6 +1103,53 @@ if (lunaEmojiToggle && emojiPicker) {
             lunaTextInput.focus();
             if (typeof updateDynamicBtn === 'function') updateDynamicBtn();
         });
+    });
+}
+
+function sendSticker(url) {
+    const msgs = getMessages();
+    msgs.push({
+        id: nextId(msgs), sender:'luna', type:'sticker',
+        content: '', timestamp: new Date().toISOString(),
+        mediaUrl: url, deletedByLuna: false
+    });
+    saveMessages(msgs);
+    renderLunaMessages();
+    scrollLuna();
+    spawnHearts();
+    if (stickerPicker) stickerPicker.classList.add('hidden');
+}
+
+if (lunaStickerToggle && stickerPicker) {
+    lunaStickerToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        stickerPicker.classList.toggle('hidden');
+        if (emojiPicker) emojiPicker.classList.add('hidden');
+    });
+    
+    document.addEventListener('click', (e) => {
+        if (!stickerPicker.contains(e.target) && e.target !== lunaStickerToggle && !lunaStickerToggle.contains(e.target)) {
+            stickerPicker.classList.add('hidden');
+        }
+    });
+    
+    stickerPicker.querySelectorAll('.sticker-item').forEach(item => {
+        item.addEventListener('click', () => {
+            sendSticker(item.src);
+        });
+    });
+}
+
+if (lunaStickerInput) {
+    lunaStickerInput.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            sendSticker(reader.result);
+        };
+        reader.readAsDataURL(file);
+        lunaStickerInput.value = '';
     });
 }
 

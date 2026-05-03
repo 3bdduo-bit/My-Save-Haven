@@ -110,14 +110,30 @@
             <span class="emoji-item">🥺</span><span class="emoji-item">🥰</span><span class="emoji-item">😘</span><span class="emoji-item">🙈</span>
         </div>
         
+        <!-- Sticker Picker Container (Hidden) -->
+        <div id="stickerPicker" class="emoji-picker hidden" style="width: 220px;">
+            <div style="display:flex;justify-content:space-between;width:100%;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #eee">
+                <span style="font-weight:bold;color:#5a4a6a;font-size:14px;">Stickers</span>
+                <label for="lunaStickerInput" style="cursor:pointer;color:#c9a0dc;font-size:13px;font-weight:bold" title="Make Sticker">➕ Make</label>
+                <input type="file" id="lunaStickerInput" accept="image/*" class="hidden-file" />
+            </div>
+            <img src="images/flower-sakura.svg" class="sticker-item" />
+            <img src="images/flower-daisy.svg" class="sticker-item" />
+            <img src="images/flower-rose.svg" class="sticker-item" />
+            <img src="images/flower-lotus.svg" class="sticker-item" />
+        </div>
+
         <button class="luna-emoji-btn" id="lunaEmojiToggle" title="Emojis">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+        </button>
+        <button class="luna-sticker-btn" id="lunaStickerToggle" title="Stickers">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l10 6.5v7L12 22 2 15.5v-7L12 2z"></path><path d="M12 22v-6.5"></path><path d="M22 8.5l-10 7-10-7"></path><path d="M2 15.5l10-7 10 7"></path></svg>
         </button>
         <label class="luna-attach-btn" for="lunaFileInput" title="Attach image, video, or audio">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
         </label>
         <input type="file" id="lunaFileInput" accept="image/*,video/*,audio/*" class="hidden-file" />
-        <input type="text" id="lunaTextInput" placeholder="Type a message..." autocomplete="off" />
+        <textarea id="lunaTextInput" placeholder="Type a message..." rows="1"></textarea>
         <div id="recordingTimer" class="recording-timer hidden">0:00</div>
         <button class="luna-dynamic-btn" id="lunaDynamicBtn" title="Record Voice">
             <svg class="icon-mic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
