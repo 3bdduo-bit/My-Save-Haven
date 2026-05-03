@@ -139,7 +139,7 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
 
 .luna-bubble img,.luna-bubble video,
 .admin-bubble-in-luna img,.admin-bubble-in-luna video {
-    width: 25%; height: auto; min-width: 120px;
+    max-width: 240px; width: 100%; height: auto;
     border-radius:10px;margin-top:6px;display:block; cursor: zoom-in;
 }
 .luna-bubble video, .admin-bubble-in-luna video { max-height:300px; object-fit: cover; }
@@ -402,7 +402,7 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
 .admin-msg.luna-sent .am-sender{color:#c9a0dc}
 .admin-msg.admin-reply .am-sender{color:#6c7ae0}
 .admin-msg .am-time{font-size:10px;color:#aaa;margin-top:4px; display:flex; justify-content:space-between; align-items:center;}
-.admin-msg img,.admin-msg video{width: 25%; height: auto; min-width: 120px; border-radius:8px;margin-top:6px;display:block; cursor: zoom-in;}
+.admin-msg img,.admin-msg video{max-width: 240px; width: 100%; height: auto; border-radius:8px;margin-top:6px;display:block; cursor: zoom-in;}
 .admin-msg video{max-height:280px; object-fit: cover;}
 
 .admin-reply-area{
