@@ -16,6 +16,15 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 let globalMessages = [];
+let lunaProfile = { avatar: '', photoUrl: '', bio: '' };
+
+onValue(ref(db, 'profile'), (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+        lunaProfile = data;
+        if (typeof updateProfileUI === 'function') updateProfileUI();
+    }
+});
 
 onValue(ref(db, 'messages'), (snapshot) => {
     globalMessages = snapshot.val() || [];
@@ -87,6 +96,19 @@ const adminScrollBottom = $('adminScrollBottom');
 const lightbox        = $('lightbox');
 const lightboxContent = $('lightboxContent');
 const lightboxClose   = $('lightboxClose');
+
+const profileModal      = $('profileModal');
+const profileCloseBtn   = $('profileCloseBtn');
+const profileSaveBtn    = $('profileSaveBtn');
+const profileAvatarInput= $('profileAvatarInput');
+const profileBioInput   = $('profileBioInput');
+const profilePhotoInput = $('profilePhotoInput');
+const profileImagePreview=$('profileImagePreview');
+const profileAvatarPreview=$('profileAvatarPreview');
+const profilePhotoPlaceholder=$('profilePhotoPlaceholder');
+const lunaProfileTrigger= $('lunaProfileTrigger');
+const lunaTopAvatar     = $('lunaTopAvatar');
+const lunaTopBio        = $('lunaTopBio');
 
 /* ═══════════════ STATE ═══════════════ */
 let currentRole = null;       // 'luna' | 'admin' | null
@@ -171,6 +193,7 @@ function showScreen(role) {
     // Smooth transition logic is handled by CSS (opacity/visibility)
     setTimeout(() => {
         if (role === 'luna') {
+            if (typeof updateProfileUI === 'function') updateProfileUI();
             if (malakWelcome) {
                 malakWelcome.classList.remove('hidden');
                 setTimeout(() => {
@@ -227,6 +250,84 @@ loginForm.addEventListener('submit', e => {
 /* ═══════════════ LOGOUT ═══════════════ */
 lunaLogout.addEventListener('click', () => { clearSession(); showScreen(null); });
 adminLogout.addEventListener('click', () => { clearSession(); showScreen(null); });
+
+/* ═══════════════ PROFILE LOGIC ═══════════════ */
+window.updateProfileUI = function() {
+    if (!lunaTopBio) return;
+    // Topbar update
+    lunaTopBio.textContent = lunaProfile.bio || "Make your own bio";
+    
+    if (lunaProfile.photoUrl) {
+        lunaTopAvatar.innerHTML = `<img src="${lunaProfile.photoUrl}" />`;
+    } else if (lunaProfile.avatar) {
+        lunaTopAvatar.innerHTML = `<span class="avatar-emoji">${lunaProfile.avatar}</span>`;
+    } else {
+        lunaTopAvatar.innerHTML = `<span style="font-size: 10px; text-align: center; line-height: 1.1; color: #fff; padding: 2px;">Make your<br>own avatar</span>`;
+    }
+
+    // Modal update
+    if (lunaProfile.photoUrl) {
+        profileImagePreview.src = lunaProfile.photoUrl;
+        profileImagePreview.classList.remove('hidden');
+        profileAvatarPreview.classList.add('hidden');
+        profilePhotoPlaceholder.classList.add('hidden');
+    } else if (lunaProfile.avatar) {
+        profileImagePreview.classList.add('hidden');
+        profileAvatarPreview.textContent = lunaProfile.avatar;
+        profileAvatarPreview.classList.remove('hidden');
+        profilePhotoPlaceholder.classList.add('hidden');
+    } else {
+        profileImagePreview.classList.add('hidden');
+        profileAvatarPreview.classList.add('hidden');
+        profilePhotoPlaceholder.classList.remove('hidden');
+    }
+    
+    profileAvatarInput.value = lunaProfile.avatar || '';
+    profileBioInput.value = lunaProfile.bio || '';
+}
+
+if (lunaProfileTrigger) {
+    lunaProfileTrigger.addEventListener('click', () => {
+        if (currentRole === 'luna') {
+            profileModal.classList.remove('hidden');
+            updateProfileUI();
+        }
+    });
+}
+
+if (profileCloseBtn) {
+    profileCloseBtn.addEventListener('click', () => {
+        profileModal.classList.add('hidden');
+        updateProfileUI(); // revert any unsaved changes
+    });
+}
+
+if (profilePhotoInput) {
+    profilePhotoInput.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            lunaProfile.photoUrl = reader.result;
+            updateProfileUI();
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+if (profileSaveBtn) {
+    profileSaveBtn.addEventListener('click', () => {
+        lunaProfile.avatar = profileAvatarInput.value.trim();
+        lunaProfile.bio = profileBioInput.value.trim();
+        
+        set(ref(db, 'profile'), lunaProfile)
+            .then(() => {
+                showToast("Profile updated! 🌸");
+                profileModal.classList.add('hidden');
+            })
+            .catch(err => showToast("Error saving profile."));
+    });
+}
 
 /* ═══════════════ REFRESH ═══════════════ */
 if (lunaRefresh) lunaRefresh.addEventListener('click', () => window.location.reload());

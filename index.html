@@ -65,11 +65,14 @@
 <div id="lunaChat" class="luna-chat hidden">
     <!-- Top Bar -->
     <div class="luna-topbar">
-        <div class="luna-topbar-left">
-            <div class="luna-avatar-circle">👸🏻</div>
-            <div>
-                <span class="luna-name">Malak</span>
-                <span class="luna-sparkle">✨</span>
+        <div class="luna-topbar-left" id="lunaProfileTrigger" title="View Profile" style="cursor: pointer; transition: transform 0.2s;">
+            <div class="luna-avatar-circle" id="lunaTopAvatar" style="overflow: hidden;">👸🏻</div>
+            <div class="luna-top-info">
+                <div style="display:flex;align-items:center;">
+                    <span class="luna-name">Malak</span>
+                    <span class="luna-sparkle">✨</span>
+                </div>
+                <div class="luna-bio-text" id="lunaTopBio">Make your own bio</div>
             </div>
         </div>
         <div class="luna-topbar-right">
@@ -196,6 +199,36 @@
     <div class="media-preview-inner" style="background: transparent; box-shadow: none; max-width: 95vw; padding: 0;">
         <button class="media-preview-close" id="lightboxClose" style="color: white; font-size: 32px; right: 0; top: -40px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">✕</button>
         <div id="lightboxContent"></div>
+    </div>
+</div>
+
+<!-- Profile Modal -->
+<div id="profileModal" class="profile-modal hidden">
+    <div class="profile-modal-inner">
+        <button class="profile-close-btn" id="profileCloseBtn">✕</button>
+        <h2 class="profile-title">Your Profile</h2>
+        
+        <div class="profile-photo-wrapper">
+            <div class="profile-photo-circle" id="profilePhotoCircle">
+                <span class="profile-placeholder-text" id="profilePhotoPlaceholder">Make your own profile photo<br><br>or<br><br>Make your own avatar</span>
+                <span id="profileAvatarPreview" class="profile-avatar-emoji hidden"></span>
+                <img id="profileImagePreview" src="" class="hidden" />
+            </div>
+            <label class="profile-edit-photo-btn" for="profilePhotoInput" title="Change Photo">📷</label>
+            <input type="file" id="profilePhotoInput" accept="image/*" class="hidden-file" />
+        </div>
+
+        <div class="profile-field">
+            <label>Avatar (Emoji)</label>
+            <input type="text" id="profileAvatarInput" placeholder="Make your own avatar" maxlength="8" />
+        </div>
+
+        <div class="profile-field">
+            <label>Bio</label>
+            <input type="text" id="profileBioInput" placeholder="Make your own bio" />
+        </div>
+
+        <button class="profile-save-btn" id="profileSaveBtn">Save Changes</button>
     </div>
 </div>
 
