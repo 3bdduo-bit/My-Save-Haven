@@ -140,28 +140,47 @@ function saveMessages(msgs) {
     let updates = {};
     let changed = false;
     
-    msgs.forEach((m, i) => {
-        if (!lastSavedMessages[i]) {
+    // Only check the last 200 messages for changes to keep performance consistent
+    const startIdx = Math.max(0, lastSavedMessages.length - 200);
+    
+    for (let i = startIdx; i < msgs.length; i++) {
+        const m = msgs[i];
+        const oldM = lastSavedMessages[i];
+        
+        if (!oldM) {
             updates[`${i}`] = m;
             changed = true;
         } else {
-            Object.keys(m).forEach(k => {
-                if (JSON.stringify(m[k]) !== JSON.stringify(lastSavedMessages[i][k])) {
-                    updates[`${i}/${k}`] = m[k];
-                    changed = true;
+            for (const k in m) {
+                if (m[k] !== oldM[k]) {
+                    // Deeper check for objects/arrays (like reactions)
+                    if (typeof m[k] === 'object' && m[k] !== null) {
+                        if (JSON.stringify(m[k]) !== JSON.stringify(oldM[k])) {
+                            updates[`${i}/${k}`] = m[k];
+                            changed = true;
+                        }
+                    } else {
+                        updates[`${i}/${k}`] = m[k];
+                        changed = true;
+                    }
                 }
-            });
+            }
         }
-    });
+    }
     
     if (changed) {
-        update(ref(db, 'messages'), updates);
+        update(ref(db, 'messages'), updates).catch(err => console.error("Save failed", err));
         lastSavedMessages = JSON.parse(JSON.stringify(msgs));
     }
 }
 
 function nextId(msgs) {
-    return msgs.length ? Math.max(...msgs.map(m => m.id)) + 1 : 1;
+    if (!msgs.length) return 1;
+    let max = 0;
+    for (let i = 0; i < msgs.length; i++) {
+        if (msgs[i].id > max) max = msgs[i].id;
+    }
+    return max + 1;
 }
 
 function fmtTime(iso) {
@@ -380,9 +399,18 @@ function renderLunaMessages() {
         lunaMessages.innerHTML = `<div class="empty-state"><span>${lunaShowSaved ? '⭐' : '💬'}</span>${lunaShowSaved ? 'No saved messages' : 'No messages yet'}</div>`;
         return;
     }
+
+    const MAX_LUNA_RENDER = 150;
+    const hasMore = msgs.length > MAX_LUNA_RENDER;
+    const displayMsgs = msgs.slice(-MAX_LUNA_RENDER);
+
     let html = '';
+    if (hasMore) {
+        html += `<div class="load-more-container"><button class="load-more-btn" onclick="renderAllLuna()">Show older messages (${msgs.length - MAX_LUNA_RENDER} more)</button></div>`;
+    }
+
     let lastDate = '';
-    msgs.forEach(m => {
+    displayMsgs.forEach(m => {
         const msgDate = formatDateSeparator(m.timestamp);
         if (msgDate !== lastDate) {
             html += `<div class="date-separator"><span>${msgDate}</span></div>`;
@@ -540,8 +568,9 @@ function lunaSendText() {
     // Automated reply for heart emojis
     const heartEmojis = ['❤️','🩷','🧡','💛','💚','💙','🩵','💜','🤎','🖤','🩶','🤍','💘','💝','💖','💗','💓','💞','💕','💟','❣️','🫶'];
     if (heartEmojis.some(emoji => text.includes(emoji))) {
+        const hId = nextId(msgs);
         msgs.push({
-            id: nextId(msgs), sender:'admin', type:'heart-bot',
+            id: hId, sender:'admin', type:'heart-bot',
             content: '', timestamp: new Date().toISOString(),
             mediaUrl: null, deletedByLuna: false
         });
@@ -555,6 +584,12 @@ function lunaSendText() {
     spawnHearts();
     updateDynamicBtn();
 }
+
+let lunaFullRender = false;
+window.renderAllLuna = function() {
+    lunaFullRender = true;
+    renderLunaMessages();
+};
 
 lunaTextInput.addEventListener('keydown', e => { 
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -853,15 +888,20 @@ function renderAdmin(filter) {
     const search = (filter !== undefined ? filter : adminSearch.value).toLowerCase();
     const msgs = getMessages();
 
-    // Mark Luna's messages as read
+    // Mark Luna's messages as read (optimized check)
     let changed = false;
-    msgs.forEach(m => {
+    const checkStart = Math.max(0, msgs.length - 100);
+    for (let i = checkStart; i < msgs.length; i++) {
+        const m = msgs[i];
         if (m.sender === 'luna' && !m.read) {
             m.read = true;
             changed = true;
         }
-    });
-    if (changed) saveMessages(msgs);
+    }
+    if (changed) {
+        // Small delay to ensure render finishes first
+        setTimeout(() => saveMessages(msgs), 50);
+    }
 
     // Sidebar — luna messages only
     const lunaOnly = msgs.filter(m => m.sender === 'luna');
@@ -898,9 +938,17 @@ function renderAdmin(filter) {
         return;
     }
 
+    const MAX_ADMIN_RENDER = 200;
+    const hasMore = filtered.length > MAX_ADMIN_RENDER && !adminFullRender && !search;
+    const displayMsgs = hasMore ? filtered.slice(-MAX_ADMIN_RENDER) : filtered;
+
     let html = '';
+    if (hasMore) {
+        html += `<div class="load-more-container"><button class="load-more-btn" onclick="renderAllAdmin()">Show older messages (${filtered.length - MAX_ADMIN_RENDER} more)</button></div>`;
+    }
+
     let lastDate = '';
-    filtered.forEach(m => {
+    displayMsgs.forEach(m => {
         const msgDate = formatDateSeparator(m.timestamp);
         if (msgDate !== lastDate) {
             html += `<div class="date-separator"><span>${msgDate}</span></div>`;
@@ -953,9 +1001,14 @@ function renderAdmin(filter) {
         </div>`;
     });
     adminMessages.innerHTML = html;
-
-    adminMessages.scrollTop = adminMessages.scrollHeight;
+    if (!hasMore) adminMessages.scrollTop = adminMessages.scrollHeight;
 }
+
+let adminFullRender = false;
+window.renderAllAdmin = function() {
+    adminFullRender = true;
+    renderAdmin();
+};
 
 adminSearch.addEventListener('input', () => renderAdmin());
 
