@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { getDatabase, ref, onValue, set, update, query, limitToLast, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDCLSzy1JRhoZiGQaolmlxTqRH1vob2KC8",
@@ -19,6 +19,47 @@ let globalMessages = [];
 let lastSavedMessages = [];
 let lunaProfile = { avatar: '', photoUrl: '', bio: '' };
 
+let currentMessagesLimit = 50;
+let messagesListener = null;
+
+function startMessagesSubscription(limit = 50) {
+    currentMessagesLimit = limit;
+    const messagesQuery = query(ref(db, 'messages'), limitToLast(currentMessagesLimit));
+    
+    // Clear old listener if it exists
+    // Note: Firebase onValue returns an unsubscribe function
+    if (typeof messagesListener === 'function') messagesListener();
+
+    messagesListener = onValue(messagesQuery, (snapshot) => {
+        const msgs = [];
+        
+        snapshot.forEach((child) => {
+            let m = child.val();
+            // Ensure every message has its DB key as an ID fallback
+            if (m && typeof m === 'object') {
+                m._dbKey = child.key;
+                msgs.push(m);
+            }
+        });
+
+        globalMessages = msgs;
+        
+        // Update lastSavedMessages for the save logic
+        // We only want to keep the current view's state for delta-checks
+        lastSavedMessages = JSON.parse(JSON.stringify(globalMessages));
+
+        if (currentRole === 'luna') {
+            renderLunaMessages();
+            scrollLuna();
+        } else if (currentRole === 'admin') {
+            renderAdmin();
+        }
+    });
+}
+
+// Initial subscription
+startMessagesSubscription(50);
+
 onValue(ref(db, 'profile'), (snapshot) => {
     const data = snapshot.val();
     if (data) {
@@ -26,28 +67,6 @@ onValue(ref(db, 'profile'), (snapshot) => {
         if (typeof updateProfileUI === 'function') updateProfileUI();
     }
 });
-
-onValue(ref(db, 'messages'), (snapshot) => {
-    const data = snapshot.val();
-    if (!data) {
-        globalMessages = [];
-    } else {
-        // If data is an object (from updates), convert to array or handle it
-        globalMessages = Array.isArray(data) ? data : Object.values(data);
-    }
-    
-    // Only update lastSaved if it's the first load or we specifically want to sync
-    if (lastSavedMessages.length === 0) {
-        lastSavedMessages = JSON.parse(JSON.stringify(globalMessages));
-    }
-    
-    if (currentRole === 'luna') {
-        renderLunaMessages();
-        scrollLuna();
-    } else if (currentRole === 'admin') {
-        renderAdmin();
-    }
-}, { onlyOnce: false });
 
 /* ═══════════════ STORAGE KEYS ═══════════════ */
 const STORAGE_SESSION  = 'secretroom_session';
@@ -140,53 +159,29 @@ function getMessages() {
 }
 
 function saveMessages(msgs) {
-    if (!msgs) return;
-    
-    // If we're setting the whole thing (e.g. first time or length mismatch)
-    if (!lastSavedMessages || msgs.length < lastSavedMessages.length) {
-        set(ref(db, 'messages'), msgs).then(() => {
-            lastSavedMessages = JSON.parse(JSON.stringify(msgs));
-        });
-        return;
-    }
+    if (!msgs || msgs.length === 0) return;
     
     let updates = {};
     let changed = false;
     
-    // Only check the last 300 messages for performance
-    const startIdx = Math.max(0, msgs.length - 300);
-    
-    for (let i = startIdx; i < msgs.length; i++) {
-        const m = msgs[i];
-        const oldM = lastSavedMessages[i];
+    // Instead of indexing by array position, we use the message's own ID or its DB key
+    // This makes it compatible with pagination (where indices in our local array don't match the DB)
+    msgs.forEach(m => {
+        const key = m._dbKey || m.id;
+        if (!key) return;
+
+        // Check if it changed relative to our local cache
+        const oldM = lastSavedMessages.find(om => (om._dbKey || om.id) == key);
         
-        if (!oldM) {
-            updates[`${i}`] = m;
+        if (!oldM || JSON.stringify(m) !== JSON.stringify(oldM)) {
+            updates[`${key}`] = m;
             changed = true;
-        } else {
-            // Shallow comparison first for speed
-            let itemChanged = false;
-            for (const k in m) {
-                if (m[k] !== oldM[k]) {
-                    if (typeof m[k] === 'object' && m[k] !== null) {
-                        if (JSON.stringify(m[k]) !== JSON.stringify(oldM[k])) {
-                            updates[`${i}/${k}`] = m[k];
-                            itemChanged = true;
-                        }
-                    } else {
-                        updates[`${i}/${k}`] = m[k];
-                        itemChanged = true;
-                    }
-                }
-            }
-            if (itemChanged) changed = true;
         }
-    }
+    });
     
     if (changed) {
         update(ref(db, 'messages'), updates)
             .then(() => {
-                // Update local cache without full stringify if possible
                 lastSavedMessages = JSON.parse(JSON.stringify(msgs));
             })
             .catch(err => console.error("Save failed", err));
@@ -406,20 +401,8 @@ if (profileSaveBtn) {
 /* ═══════════════ SOFT REFRESH ═══════════════ */
 window.softRefresh = function() {
     showToast("Restoring data... 🔄");
-    
-    // Re-sync from database manually just in case
-    onValue(ref(db, 'messages'), (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-            globalMessages = Array.isArray(data) ? data : Object.values(data);
-            lastSavedMessages = JSON.parse(JSON.stringify(globalMessages));
-        }
-        
-        if (currentRole === 'luna') renderLunaMessages();
-        if (currentRole === 'admin') renderAdmin();
-        
-        setTimeout(() => showToast("Data restored! ✨"), 600);
-    }, { onlyOnce: true });
+    startMessagesSubscription(currentMessagesLimit);
+    setTimeout(() => showToast("Data restored! ✨"), 600);
 };
 
 if (lunaRefresh) lunaRefresh.addEventListener('click', () => window.softRefresh());
@@ -438,13 +421,12 @@ function renderLunaMessages() {
         return;
     }
 
-    const MAX_LUNA_RENDER = 150;
-    const hasMore = msgs.length > MAX_LUNA_RENDER;
-    const displayMsgs = msgs.slice(-MAX_LUNA_RENDER);
+    const displayMsgs = msgs; // We already paginated via Firebase query
+    const hasMore = msgs.length >= currentMessagesLimit;
 
     let html = '';
     if (hasMore) {
-        html += `<div class="load-more-container"><button class="load-more-btn" onclick="renderAllLuna()">Show older messages (${msgs.length - MAX_LUNA_RENDER} more)</button></div>`;
+        html += `<div class="load-more-container"><button class="load-more-btn" id="lunaLoadMoreBtn">Show older messages...</button></div>`;
     }
 
     let lastDate = '';
@@ -527,6 +509,15 @@ function renderLunaMessages() {
         </div>`;
     });
     lunaMessages.innerHTML = html;
+    
+    // Attach listener to Load More button
+    const loadBtn = $('lunaLoadMoreBtn');
+    if (loadBtn) {
+        loadBtn.onclick = () => {
+            loadBtn.textContent = "Loading...";
+            startMessagesSubscription(currentMessagesLimit + 100);
+        };
+    }
 }
 
 function scrollLuna() {
@@ -635,10 +626,8 @@ function lunaSendText() {
     updateDynamicBtn();
 }
 
-let lunaFullRender = false;
 window.renderAllLuna = function() {
-    lunaFullRender = true;
-    renderLunaMessages();
+    startMessagesSubscription(currentMessagesLimit + 100);
 };
 
 lunaTextInput.addEventListener('keydown', e => { 
@@ -988,13 +977,12 @@ function renderAdmin(filter) {
         return;
     }
 
-    const MAX_ADMIN_RENDER = 200;
-    const hasMore = filtered.length > MAX_ADMIN_RENDER && !adminFullRender && !search;
-    const displayMsgs = hasMore ? filtered.slice(-MAX_ADMIN_RENDER) : filtered;
+    const displayMsgs = filtered; // Paginated via Firebase
+    const hasMore = filtered.length >= currentMessagesLimit && !search;
 
     let html = '';
     if (hasMore) {
-        html += `<div class="load-more-container"><button class="load-more-btn" onclick="renderAllAdmin()">Show older messages (${filtered.length - MAX_ADMIN_RENDER} more)</button></div>`;
+        html += `<div class="load-more-container"><button class="load-more-btn" id="adminLoadMoreBtn">Show older messages...</button></div>`;
     }
 
     let lastDate = '';
@@ -1053,13 +1041,20 @@ function renderAdmin(filter) {
         </div>`;
     });
     adminMessages.innerHTML = html;
+    
+    const loadBtn = $('adminLoadMoreBtn');
+    if (loadBtn) {
+        loadBtn.onclick = () => {
+            loadBtn.textContent = "Loading...";
+            startMessagesSubscription(currentMessagesLimit + 100);
+        };
+    }
+    
     if (!hasMore) adminMessages.scrollTop = adminMessages.scrollHeight;
 }
 
-let adminFullRender = false;
 window.renderAllAdmin = function() {
-    adminFullRender = true;
-    renderAdmin();
+    startMessagesSubscription(currentMessagesLimit + 100);
 };
 
 adminSearch.addEventListener('input', () => renderAdmin());
