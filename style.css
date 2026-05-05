@@ -659,6 +659,7 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
 .admin-msg.luna-sent .reaction-badge { right: auto; left: 10px; }
 
 /* Saved Badge */
+/* Saved Badge */
 .saved-badge {
     position: absolute; bottom: -10px; left: 10px; background: #fff; border-radius: 12px;
     padding: 2px 6px; font-size: 11px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
@@ -668,6 +669,13 @@ html,body{height:100%;font-family:'Quicksand',sans-serif;overflow:hidden}
 .luna-bubble .saved-badge { left: auto; right: 10px; bottom: -10px; }
 .admin-bubble-in-luna .saved-badge { left: 10px; }
 .admin-msg .saved-badge { left: 10px; }
+
+.admin-restore-small {
+    position: absolute; bottom: -10px; right: 10px; background: #e8f5e9; border: 1px solid #c8e6c9;
+    color: #2e7d32; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+    cursor: pointer; transition: all 0.2s; z-index: 5;
+}
+.admin-restore-small:hover { background: #2e7d32; color: #fff; transform: scale(1.1); }
 
 /* Heart Bot Message Styling */
 .heart-bot-bubble {

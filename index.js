@@ -28,17 +28,26 @@ onValue(ref(db, 'profile'), (snapshot) => {
 });
 
 onValue(ref(db, 'messages'), (snapshot) => {
-    globalMessages = snapshot.val() || [];
-    lastSavedMessages = JSON.parse(JSON.stringify(globalMessages));
-    if (typeof currentRole !== 'undefined') {
-        if (currentRole === 'luna') {
-            if (typeof renderLunaMessages === 'function') renderLunaMessages();
-            if (typeof scrollLuna === 'function') scrollLuna();
-        } else if (currentRole === 'admin') {
-            if (typeof renderAdmin === 'function') renderAdmin();
-        }
+    const data = snapshot.val();
+    if (!data) {
+        globalMessages = [];
+    } else {
+        // If data is an object (from updates), convert to array or handle it
+        globalMessages = Array.isArray(data) ? data : Object.values(data);
     }
-});
+    
+    // Only update lastSaved if it's the first load or we specifically want to sync
+    if (lastSavedMessages.length === 0) {
+        lastSavedMessages = JSON.parse(JSON.stringify(globalMessages));
+    }
+    
+    if (currentRole === 'luna') {
+        renderLunaMessages();
+        scrollLuna();
+    } else if (currentRole === 'admin') {
+        renderAdmin();
+    }
+}, { onlyOnce: false });
 
 /* ═══════════════ STORAGE KEYS ═══════════════ */
 const STORAGE_SESSION  = 'secretroom_session';
@@ -131,17 +140,21 @@ function getMessages() {
 }
 
 function saveMessages(msgs) {
+    if (!msgs) return;
+    
+    // If we're setting the whole thing (e.g. first time or length mismatch)
     if (!lastSavedMessages || msgs.length < lastSavedMessages.length) {
-        set(ref(db, 'messages'), msgs);
-        lastSavedMessages = JSON.parse(JSON.stringify(msgs));
+        set(ref(db, 'messages'), msgs).then(() => {
+            lastSavedMessages = JSON.parse(JSON.stringify(msgs));
+        });
         return;
     }
     
     let updates = {};
     let changed = false;
     
-    // Only check the last 200 messages for changes to keep performance consistent
-    const startIdx = Math.max(0, lastSavedMessages.length - 200);
+    // Only check the last 300 messages for performance
+    const startIdx = Math.max(0, msgs.length - 300);
     
     for (let i = startIdx; i < msgs.length; i++) {
         const m = msgs[i];
@@ -151,26 +164,32 @@ function saveMessages(msgs) {
             updates[`${i}`] = m;
             changed = true;
         } else {
+            // Shallow comparison first for speed
+            let itemChanged = false;
             for (const k in m) {
                 if (m[k] !== oldM[k]) {
-                    // Deeper check for objects/arrays (like reactions)
                     if (typeof m[k] === 'object' && m[k] !== null) {
                         if (JSON.stringify(m[k]) !== JSON.stringify(oldM[k])) {
                             updates[`${i}/${k}`] = m[k];
-                            changed = true;
+                            itemChanged = true;
                         }
                     } else {
                         updates[`${i}/${k}`] = m[k];
-                        changed = true;
+                        itemChanged = true;
                     }
                 }
             }
+            if (itemChanged) changed = true;
         }
     }
     
     if (changed) {
-        update(ref(db, 'messages'), updates).catch(err => console.error("Save failed", err));
-        lastSavedMessages = JSON.parse(JSON.stringify(msgs));
+        update(ref(db, 'messages'), updates)
+            .then(() => {
+                // Update local cache without full stringify if possible
+                lastSavedMessages = JSON.parse(JSON.stringify(msgs));
+            })
+            .catch(err => console.error("Save failed", err));
     }
 }
 
@@ -384,8 +403,27 @@ if (profileSaveBtn) {
 }
 
 /* ═══════════════ REFRESH ═══════════════ */
-if (lunaRefresh) lunaRefresh.addEventListener('click', () => window.location.reload());
-if (adminRefresh) adminRefresh.addEventListener('click', () => window.location.reload());
+/* ═══════════════ SOFT REFRESH ═══════════════ */
+window.softRefresh = function() {
+    showToast("Restoring data... 🔄");
+    
+    // Re-sync from database manually just in case
+    onValue(ref(db, 'messages'), (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            globalMessages = Array.isArray(data) ? data : Object.values(data);
+            lastSavedMessages = JSON.parse(JSON.stringify(globalMessages));
+        }
+        
+        if (currentRole === 'luna') renderLunaMessages();
+        if (currentRole === 'admin') renderAdmin();
+        
+        setTimeout(() => showToast("Data restored! ✨"), 600);
+    }, { onlyOnce: true });
+};
+
+if (lunaRefresh) lunaRefresh.addEventListener('click', () => window.softRefresh());
+if (adminRefresh) adminRefresh.addEventListener('click', () => window.softRefresh());
 
 /* ═══════════════ LUNA — RENDER ═══════════════ */
 function renderLunaMessages() {
@@ -512,6 +550,18 @@ window.toggleSave = function(id) {
     if (idx !== -1) {
         msgs[idx].savedByLuna = !msgs[idx].savedByLuna;
         saveMessages(msgs);
+        if (currentRole === 'luna') renderLunaMessages();
+        if (currentRole === 'admin') renderAdmin();
+    }
+};
+
+window.restoreMsg = function(id) {
+    const msgs = getMessages();
+    const idx = msgs.findIndex(m => m.id === id);
+    if (idx !== -1) {
+        msgs[idx].deletedByLuna = false;
+        saveMessages(msgs);
+        showToast("Message restored! ✨");
         if (currentRole === 'luna') renderLunaMessages();
         if (currentRole === 'admin') renderAdmin();
     }
@@ -889,18 +939,18 @@ function renderAdmin(filter) {
     const msgs = getMessages();
 
     // Mark Luna's messages as read (optimized check)
-    let changed = false;
+    let hasUnread = false;
     const checkStart = Math.max(0, msgs.length - 100);
     for (let i = checkStart; i < msgs.length; i++) {
-        const m = msgs[i];
-        if (m.sender === 'luna' && !m.read) {
-            m.read = true;
-            changed = true;
+        if (msgs[i].sender === 'luna' && !msgs[i].read) {
+            msgs[i].read = true;
+            hasUnread = true;
         }
     }
-    if (changed) {
-        // Small delay to ensure render finishes first
-        setTimeout(() => saveMessages(msgs), 50);
+    if (hasUnread) {
+        // Debounce saving
+        if (window.adminReadTimeout) clearTimeout(window.adminReadTimeout);
+        window.adminReadTimeout = setTimeout(() => saveMessages(msgs), 1000);
     }
 
     // Sidebar — luna messages only
@@ -988,6 +1038,7 @@ function renderAdmin(filter) {
         }
         const reactionBadge = m.reaction ? `<div class="reaction-badge" onclick="toggleReaction(${m.id}, event)">${m.reaction}</div>` : '';
         const savedBadge = m.savedByLuna ? `<div class="saved-badge">⭐ Saved by Malak</div>` : '';
+        const restoreBtn = m.deletedByLuna ? `<button class="admin-restore-small" onclick="restoreMsg(${m.id})" title="Restore">Restore</button>` : '';
 
         html += `<div class="admin-msg ${cls}" data-id="${m.id}" ondblclick="toggleReaction(${m.id}, event)">
             <div class="am-sender">${senderLabel} ${m.deletedByLuna ? '<span style="color:#e74c6f;font-size:10px;margin-left:4px;">(Deleted by Malak)</span>' : ''}</div>
@@ -998,6 +1049,7 @@ function renderAdmin(filter) {
             </div>
             ${reactionBadge}
             ${savedBadge}
+            ${restoreBtn}
         </div>`;
     });
     adminMessages.innerHTML = html;
