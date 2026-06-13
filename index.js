@@ -19,15 +19,14 @@ let globalMessages = [];
 let lastSavedMessages = [];
 let lunaProfile = { avatar: '', photoUrl: '', bio: '' };
 
-let currentMessagesLimit = 50;
+// تعديل الليميت لـ 15 لسرعة التحميل الابتدائية
+let currentMessagesLimit = 15;
 let messagesListener = null;
 
-function startMessagesSubscription(limit = 50) {
+function startMessagesSubscription(limit = 15) {
     currentMessagesLimit = limit;
     const messagesQuery = query(ref(db, 'messages'), limitToLast(currentMessagesLimit));
     
-    // Clear old listener if it exists
-    // Note: Firebase onValue returns an unsubscribe function
     if (typeof messagesListener === 'function') messagesListener();
 
     messagesListener = onValue(messagesQuery, (snapshot) => {
@@ -35,7 +34,6 @@ function startMessagesSubscription(limit = 50) {
         
         snapshot.forEach((child) => {
             let m = child.val();
-            // Ensure every message has its DB key as an ID fallback
             if (m && typeof m === 'object') {
                 m._dbKey = child.key;
                 msgs.push(m);
@@ -43,9 +41,6 @@ function startMessagesSubscription(limit = 50) {
         });
 
         globalMessages = msgs;
-        
-        // Update lastSavedMessages for the save logic
-        // We only want to keep the current view's state for delta-checks
         lastSavedMessages = JSON.parse(JSON.stringify(globalMessages));
 
         if (currentRole === 'luna') {
@@ -53,12 +48,13 @@ function startMessagesSubscription(limit = 50) {
             scrollLuna();
         } else if (currentRole === 'admin') {
             renderAdmin();
+            scrollAdmin();
         }
     });
 }
 
-// Initial subscription
-startMessagesSubscription(50);
+// تشغيل الاشتراك الابتدائي بـ 15 رسالة فقط
+startMessagesSubscription(15);
 
 onValue(ref(db, 'profile'), (snapshot) => {
     const data = snapshot.val();
@@ -85,51 +81,18 @@ const loginError      = $('loginError');
 const lunaChat        = $('lunaChat');
 const lunaMessages    = $('lunaMessages');
 const lunaTextInput   = $('lunaTextInput');
-const recordingTimer  = $('recordingTimer');
-const lunaDynamicBtn  = $('lunaDynamicBtn');
-const recordingPreviewContainer = $('recordingPreviewContainer');
-const recordingPreview = $('recordingPreview');
-const flipCameraBtn   = $('flipCameraBtn');
-const lunaFileInput   = $('lunaFileInput');
 const lunaLogout      = $('lunaLogout');
 const lunaScrollBottom = $('lunaScrollBottom');
-const heartsContainer = $('heartsContainer');
-const lunaMediaPreview  = $('lunaMediaPreview');
-const lunaPreviewContent = $('lunaPreviewContent');
-const lunaPreviewClose  = $('lunaPreviewClose');
-const lunaPreviewSend   = $('lunaPreviewSend');
-const lunaToggleSaved   = $('lunaToggleSaved');
 const lunaRefresh       = $('lunaRefresh');
-const lunaMoodBtn       = $('lunaMoodBtn');
-const lunaEmojiToggle   = $('lunaEmojiToggle');
-const emojiPicker       = $('emojiPicker');
-const lunaStickerToggle = $('lunaStickerToggle');
-const stickerPicker     = $('stickerPicker');
-const lunaStickerInput  = $('lunaStickerInput');
-
-const malakWelcome    = $('malakWelcome');
-const welcomeContinueBtn = $('welcomeContinueBtn');
-
-const editModal       = $('editModal');
-const editMessageInput= $('editMessageInput');
-const editModalClose  = $('editModalClose');
-const editModalSave   = $('editModalSave');
 
 const adminDash       = $('adminDash');
 const adminMessages   = $('adminMessages');
-const adminSidebar    = $('adminSidebar');
 const adminReplyInput = $('adminReplyInput');
 const adminReplyBtn   = $('adminReplyBtn');
 const adminLogout     = $('adminLogout');
 const adminSearch     = $('adminSearch');
-const adminToggleDeletedBtn = $('adminToggleDeletedBtn');
-const adminToggleSavedBtn   = $('adminToggleSavedBtn');
 const adminRefresh      = $('adminRefresh');
 const adminScrollBottom = $('adminScrollBottom');
-
-const lightbox        = $('lightbox');
-const lightboxContent = $('lightboxContent');
-const lightboxClose   = $('lightboxClose');
 
 const profileModal      = $('profileModal');
 const profileCloseBtn   = $('profileCloseBtn');
@@ -146,46 +109,11 @@ const lunaTopBio        = $('lunaTopBio');
 
 /* ═══════════════ STATE ═══════════════ */
 let currentRole = null;       // 'luna' | 'admin' | null
-let pendingMedia = null;      // { type, dataUrl }
-let adminPollTimer = null;
-let editingMsgId = null;
-let adminShowDeleted = false;
-let adminShowSaved = false;
 let lunaShowSaved = false;
 
 /* ═══════════════ HELPERS ═══════════════ */
 function getMessages() {
     return globalMessages || [];
-}
-
-function saveMessages(msgs) {
-    if (!msgs || msgs.length === 0) return;
-    
-    let updates = {};
-    let changed = false;
-    
-    // Instead of indexing by array position, we use the message's own ID or its DB key
-    // This makes it compatible with pagination (where indices in our local array don't match the DB)
-    msgs.forEach(m => {
-        const key = m._dbKey || m.id;
-        if (!key) return;
-
-        // Check if it changed relative to our local cache
-        const oldM = lastSavedMessages.find(om => (om._dbKey || om.id) == key);
-        
-        if (!oldM || JSON.stringify(m) !== JSON.stringify(oldM)) {
-            updates[`${key}`] = m;
-            changed = true;
-        }
-    });
-    
-    if (changed) {
-        update(ref(db, 'messages'), updates)
-            .then(() => {
-                lastSavedMessages = JSON.parse(JSON.stringify(msgs));
-            })
-            .catch(err => console.error("Save failed", err));
-    }
 }
 
 function nextId(msgs) {
@@ -195,13 +123,6 @@ function nextId(msgs) {
         if (msgs[i].id > max) max = msgs[i].id;
     }
     return max + 1;
-}
-
-function fmtTime(iso) {
-    const d = new Date(iso);
-    return d.toLocaleString('en-US', {
-        month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:true
-    });
 }
 
 function shortTime(iso) {
@@ -221,6 +142,11 @@ function formatDateSeparator(iso) {
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
 function showToast(message) {
     const container = $('toastContainer');
     if (!container) return;
@@ -233,6 +159,14 @@ function showToast(message) {
         toast.classList.add('fadeOut');
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+}
+
+function scrollLuna() {
+    if (lunaMessages) lunaMessages.scrollTop = lunaMessages.scrollHeight;
+}
+
+function scrollAdmin() {
+    if (adminMessages) adminMessages.scrollTop = adminMessages.scrollHeight;
 }
 
 /* ═══════════════ SESSION ═══════════════ */
@@ -253,31 +187,17 @@ function showScreen(role) {
     loginScreen.classList.add('hidden');
     lunaChat.classList.add('hidden');
     adminDash.classList.add('hidden');
-    if (adminPollTimer) { clearInterval(adminPollTimer); adminPollTimer = null; }
 
-    // Smooth transition logic is handled by CSS (opacity/visibility)
     setTimeout(() => {
         if (role === 'luna') {
+            lunaChat.classList.remove('hidden');
             if (typeof updateProfileUI === 'function') updateProfileUI();
-            if (malakWelcome) {
-                malakWelcome.classList.remove('hidden');
-                // Removed 3s timeout. Now wait for button click.
-                if (welcomeContinueBtn) {
-                    welcomeContinueBtn.onclick = () => {
-                        malakWelcome.classList.add('hidden');
-                        lunaChat.classList.remove('hidden');
-                        renderLunaMessages();
-                        scrollLuna();
-                    };
-                }
-            } else {
-                lunaChat.classList.remove('hidden');
-                renderLunaMessages();
-                scrollLuna();
-            }
+            renderLunaMessages();
+            scrollLuna();
         } else if (role === 'admin') {
             adminDash.classList.remove('hidden');
             renderAdmin();
+            scrollAdmin();
         } else {
             loginScreen.classList.remove('hidden');
             passwordInput.value = '';
@@ -322,18 +242,16 @@ adminLogout.addEventListener('click', () => { clearSession(); showScreen(null); 
 /* ═══════════════ PROFILE LOGIC ═══════════════ */
 window.updateProfileUI = function() {
     if (!lunaTopBio) return;
-    // Topbar update
     lunaTopBio.textContent = lunaProfile.bio || "Make your own bio";
     
     if (lunaProfile.photoUrl) {
-        lunaTopAvatar.innerHTML = `<img src="${lunaProfile.photoUrl}" />`;
+        lunaTopAvatar.innerHTML = `<img src="${lunaProfile.photoUrl}" style="width:100%;height:100%;object-fit:cover;" />`;
     } else if (lunaProfile.avatar) {
         lunaTopAvatar.innerHTML = `<span class="avatar-emoji">${lunaProfile.avatar}</span>`;
     } else {
         lunaTopAvatar.innerHTML = `<span style="font-size: 10px; text-align: center; line-height: 1.1; color: #fff; padding: 2px;">Make your<br>own avatar</span>`;
     }
 
-    // Modal update
     if (lunaProfile.photoUrl) {
         profileImagePreview.src = lunaProfile.photoUrl;
         profileImagePreview.classList.remove('hidden');
@@ -366,7 +284,7 @@ if (lunaProfileTrigger) {
 if (profileCloseBtn) {
     profileCloseBtn.addEventListener('click', () => {
         profileModal.classList.add('hidden');
-        updateProfileUI(); // revert any unsaved changes
+        updateProfileUI();
     });
 }
 
@@ -398,7 +316,6 @@ if (profileSaveBtn) {
 }
 
 /* ═══════════════ REFRESH ═══════════════ */
-/* ═══════════════ SOFT REFRESH ═══════════════ */
 window.softRefresh = function() {
     showToast("Restoring data... 🔄");
     startMessagesSubscription(currentMessagesLimit);
@@ -407,6 +324,54 @@ window.softRefresh = function() {
 
 if (lunaRefresh) lunaRefresh.addEventListener('click', () => window.softRefresh());
 if (adminRefresh) adminRefresh.addEventListener('click', () => window.softRefresh());
+
+/* ═══════════════ MESSAGE SENDING LOGIC ═══════════════ */
+function sendTextMessage(sender, text) {
+    if (!text.trim()) return;
+    const msgs = getMessages();
+    const newId = nextId(msgs);
+    
+    const newMsg = {
+        id: newId,
+        sender: sender,
+        type: 'text',
+        content: text.trim(),
+        timestamp: new Date().toISOString()
+    };
+    
+    set(ref(db, `messages/${newId}`), newMsg)
+        .catch(err => console.error("Send failed", err));
+}
+
+// Listeners for inputs
+lunaTextInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const text = lunaTextInput.value.trim();
+        if (text) {
+            sendTextMessage('luna', text);
+            lunaTextInput.value = '';
+        }
+    }
+});
+
+adminReplyBtn.addEventListener('click', () => {
+    const text = adminReplyInput.value.trim();
+    if (text) {
+        sendTextMessage('admin', text);
+        adminReplyInput.value = '';
+    }
+});
+
+adminReplyInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+        const text = adminReplyInput.value.trim();
+        if (text) {
+            sendTextMessage('admin', text);
+            adminReplyInput.value = '';
+        }
+    }
+});
 
 /* ═══════════════ LUNA — RENDER ═══════════════ */
 function renderLunaMessages() {
@@ -421,16 +386,10 @@ function renderLunaMessages() {
         return;
     }
 
-    const displayMsgs = msgs; // We already paginated via Firebase query
-    const hasMore = msgs.length >= currentMessagesLimit;
-
     let html = '';
-    if (hasMore) {
-        html += `<div class="load-more-container"><button class="load-more-btn" id="lunaLoadMoreBtn">Show older messages...</button></div>`;
-    }
-
     let lastDate = '';
-    displayMsgs.forEach(m => {
+    
+    msgs.forEach(m => {
         const msgDate = formatDateSeparator(m.timestamp);
         if (msgDate !== lastDate) {
             html += `<div class="date-separator"><span>${msgDate}</span></div>`;
@@ -440,865 +399,97 @@ function renderLunaMessages() {
         let content = '';
         if (m.type === 'text') {
             content = escapeHtml(m.content);
-        } else if (m.type === 'sticker') {
-            content = `<img src="${m.mediaUrl}" alt="sticker" loading="lazy" class="sticker-msg-img" />`;
-        } else if (m.type === 'image') {
-            content = `<img src="${m.mediaUrl}" alt="image" loading="lazy"/>`;
-        } else if (m.type === 'video') {
-            content = `<video src="${m.mediaUrl}" controls playsinline></video>`;
-        } else if (m.type === 'audio') {
-            const isLuna = m.sender === 'luna';
-            const iconColor = isLuna ? '#fff' : '#c9a0dc';
-            content = `<div class="custom-audio-player">
-                <div class="audio-icon" style="color: ${iconColor}">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
-                </div>
-                <audio src="${m.mediaUrl}" controls style="height:30px; width:160px; filter: ${isLuna ? 'invert(1) brightness(2)' : 'none'};"></audio>
-                <span class="audio-duration-tag">${m.duration || ''}</span>
-            </div>`;
-        } else if (m.type === 'heart-bot') {
-            content = `<div style="font-size: 70px; text-align: center; animation: gentleBounce 2s infinite; filter: drop-shadow(0 0 10px rgba(255,105,180,0.6));">❤️</div><div style="margin-top: 15px; font-size: 16px; font-weight: bold; text-align: center; color: #d65076; font-family: 'Quicksand', sans-serif;">You deserve a big heart because of your beauty</div>`;
         }
 
         const isLuna = m.sender === 'luna';
         let cls = isLuna ? 'luna-bubble' : 'admin-bubble-in-luna';
-        let senderBadge = isLuna ? '' : '<span class="am-sender-badge">🛡️ Admin Reply</span>';
-        const readReceipt = '';
-        const reactionBadge = m.reaction ? `<div class="reaction-badge" onclick="toggleReaction(${m.id}, event)">${m.reaction}</div>` : '';
-        const savedBadge = m.savedByLuna ? `<div class="saved-badge">⭐ Saved</div>` : '';
+        let senderBadge = isLuna ? '' : '<span class="am-sender-badge" style="font-size:11px; font-weight:bold; color:#c9a0dc; display:block; margin-bottom:4px;">🛡️ Abdelrahman</span>';
+        const reactionBadge = m.reaction ? `<div class="reaction-badge">${m.reaction}</div>` : '';
+        const savedBadge = m.savedByLuna ? `<div class="saved-badge" style="font-size:10px; color:gold; margin-top:2px;">⭐ Saved</div>` : '';
         
-        if (m.type === 'heart-bot') {
-            cls = 'heart-bot-bubble';
-            senderBadge = '';
-        } else if (m.type === 'sticker') {
-            cls += ' sticker-bubble';
-        }
+        let actionBtns = `
+            <div class="msg-actions" style="margin-top:5px; display:flex; gap:8px; opacity:0.6;">
+                <button onclick="window.toggleSave(${m.id})" style="background:none; border:none; cursor:pointer; color:inherit;">${m.savedByLuna ? '⭐' : '☆'}</button>
+                <button onclick="window.deleteMsg(${m.id})" style="background:none; border:none; cursor:pointer; color:inherit;">🗑️</button>
+            </div>
+        `;
         
-        let actionBtns = '';
-        const saveIcon = m.savedByLuna ? '⭐' : '☆';
-        if (isLuna && m.type === 'text') {
-            actionBtns = `<div class="msg-actions">
-                <button onclick="toggleSave(${m.id})" title="Save">${saveIcon}</button>
-                <button onclick="openEditModal(${m.id})" title="Edit">✎</button>
-                <button onclick="deleteMsg(${m.id})" title="Delete">🗑️</button>
-            </div>`;
-        } else {
-            actionBtns = `<div class="msg-actions">
-                <button onclick="toggleSave(${m.id})" title="Save">${saveIcon}</button>
-                <button onclick="deleteMsg(${m.id})" title="Delete">🗑️</button>
-            </div>`;
-        }
-
-        let timeRow = '';
-        if (m.type === 'heart-bot') {
-            timeRow = `<div class="msg-time">${fmtTime(m.timestamp)}</div>`;
-        } else {
-            timeRow = `<div style="display:flex; justify-content:space-between; align-items:center;">
-                <span></span>
-                <span class="msg-time">${fmtTime(m.timestamp)} ${readReceipt}</span>
-            </div>`;
-        }
-
-        html += `<div class="${cls}" data-id="${m.id}" ondblclick="toggleReaction(${m.id}, event)">
-            ${senderBadge}
-            ${content}
-            ${timeRow}
-            ${actionBtns}
-            ${reactionBadge}
-            ${savedBadge}
-        </div>`;
+        html += `
+            <div class="message-row" style="display:flex; justify-content: ${isLuna ? 'flex-end' : 'flex-start'}; margin: 10px 0;">
+                <div class="msg-bubble ${cls}" style="max-width:70%; padding:10px; border-radius:12px; background:${isLuna?'#5a4a6a':'#3a3a4a'}; color:#fff;">
+                    ${senderBadge}
+                    <div class="msg-content">${content}</div>
+                    <div class="msg-time" style="font-size:10px; opacity:0.5; text-align:right; margin-top:4px;">${shortTime(m.timestamp)}</div>
+                    ${savedBadge}
+                    ${reactionBadge}
+                    ${actionBtns}
+                </div>
+            </div>
+        `;
     });
+    
     lunaMessages.innerHTML = html;
-    
-    // Attach listener to Load More button
-    const loadBtn = $('lunaLoadMoreBtn');
-    if (loadBtn) {
-        loadBtn.onclick = () => {
-            loadBtn.textContent = "Loading...";
-            startMessagesSubscription(currentMessagesLimit + 100);
-        };
-    }
-}
-
-function scrollLuna() {
-    requestAnimationFrame(() => { lunaMessages.scrollTop = lunaMessages.scrollHeight; });
-}
-
-/* ═══════════════ LUNA — ACTIONS (EDIT / DELETE) ═══════════════ */
-window.deleteMsg = function(id) {
-    const msgs = getMessages();
-    const idx = msgs.findIndex(m => m.id === id);
-    if (idx !== -1) {
-        msgs[idx].deletedByLuna = true;
-        saveMessages(msgs);
-        renderLunaMessages();
-    }
-};
-
-window.toggleSave = function(id) {
-    const msgs = getMessages();
-    const idx = msgs.findIndex(m => m.id === id);
-    if (idx !== -1) {
-        msgs[idx].savedByLuna = !msgs[idx].savedByLuna;
-        saveMessages(msgs);
-        if (currentRole === 'luna') renderLunaMessages();
-        if (currentRole === 'admin') renderAdmin();
-    }
-};
-
-window.restoreMsg = function(id) {
-    const msgs = getMessages();
-    const idx = msgs.findIndex(m => m.id === id);
-    if (idx !== -1) {
-        msgs[idx].deletedByLuna = false;
-        saveMessages(msgs);
-        showToast("Message restored! ✨");
-        if (currentRole === 'luna') renderLunaMessages();
-        if (currentRole === 'admin') renderAdmin();
-    }
-};
-
-window.openEditModal = function(id) {
-    const msgs = getMessages();
-    const msg = msgs.find(m => m.id === id);
-    if (msg && msg.type === 'text') {
-        editingMsgId = id;
-        editMessageInput.value = msg.content;
-        editModal.classList.remove('hidden');
-        editMessageInput.focus();
-    }
-};
-
-editModalClose.addEventListener('click', () => {
-    editModal.classList.add('hidden');
-    editingMsgId = null;
-});
-
-editModalSave.addEventListener('click', () => {
-    if (!editingMsgId) return;
-    const newContent = editMessageInput.value.trim();
-    if (newContent) {
-        const msgs = getMessages();
-        const idx = msgs.findIndex(m => m.id === editingMsgId);
-        if (idx !== -1) {
-            msgs[idx].content = newContent;
-            msgs[idx].timestamp = new Date().toISOString(); // optionally update time
-            saveMessages(msgs);
-            renderLunaMessages();
-        }
-    }
-    editModal.classList.add('hidden');
-    editingMsgId = null;
-});
-
-editMessageInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') editModalSave.click();
-});
-
-/* ═══════════════ LUNA — SEND TEXT ═══════════════ */
-function lunaSendText() {
-    const text = lunaTextInput.value.trim();
-    if (!text) return;
-    const msgs = getMessages();
-    msgs.push({
-        id: nextId(msgs), sender:'luna', type:'text',
-        content: text, timestamp: new Date().toISOString(),
-        mediaUrl: null, deletedByLuna: false
-    });
-    
-    // Automated reply for heart emojis
-    const heartEmojis = ['❤️','🩷','🧡','💛','💚','💙','🩵','💜','🤎','🖤','🩶','🤍','💘','💝','💖','💗','💓','💞','💕','💟','❣️','🫶'];
-    if (heartEmojis.some(emoji => text.includes(emoji))) {
-        const hId = nextId(msgs);
-        msgs.push({
-            id: hId, sender:'admin', type:'heart-bot',
-            content: '', timestamp: new Date().toISOString(),
-            mediaUrl: null, deletedByLuna: false
-        });
-    }
-
-    saveMessages(msgs);
-    lunaTextInput.value = '';
-    lunaTextInput.style.height = 'auto';
-    renderLunaMessages();
-    scrollLuna();
-    spawnHearts();
-    updateDynamicBtn();
-}
-
-window.renderAllLuna = function() {
-    startMessagesSubscription(currentMessagesLimit + 100);
-};
-
-lunaTextInput.addEventListener('keydown', e => { 
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        lunaSendText();
-    }
-});
-lunaTextInput.addEventListener('input', function() {
-    this.style.height = 'auto';
-    this.style.height = (this.scrollHeight) + 'px';
-    updateDynamicBtn();
-});
-
-/* ═══════════════ LUNA — ATTACH MEDIA ═══════════════ */
-function handleFileSelect(file) {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-        const isVideo = file.type.startsWith('video');
-        const isAudio = file.type.startsWith('audio');
-        let type = 'image';
-        if (isVideo) type = 'video';
-        if (isAudio) type = 'audio';
-
-        pendingMedia = { type, dataUrl: reader.result };
-        
-        if (isVideo) {
-            lunaPreviewContent.innerHTML = `<video src="${reader.result}" controls style="max-width:100%;max-height:50vh;border-radius:12px"></video>`;
-        } else if (isAudio) {
-            lunaPreviewContent.innerHTML = `<audio src="${reader.result}" controls style="width:100%; margin:20px 0; outline:none;"></audio>`;
-        } else {
-            lunaPreviewContent.innerHTML = `<img src="${reader.result}" style="max-width:100%;max-height:50vh;border-radius:12px"/>`;
-        }
-        lunaMediaPreview.classList.remove('hidden');
-    };
-    reader.readAsDataURL(file);
-}
-
-lunaFileInput.addEventListener('change', e => {
-    handleFileSelect(e.target.files[0]);
-    lunaFileInput.value = '';
-});
-
-// Drag and drop for media
-lunaChat.addEventListener('dragover', e => { e.preventDefault(); lunaChat.classList.add('drag-active'); });
-lunaChat.addEventListener('dragleave', e => { e.preventDefault(); lunaChat.classList.remove('drag-active'); });
-lunaChat.addEventListener('drop', e => {
-    e.preventDefault();
-    lunaChat.classList.remove('drag-active');
-    const file = e.dataTransfer.files[0];
-    if (file && (file.type.startsWith('image/') || file.type.startsWith('video/') || file.type.startsWith('audio/'))) {
-        handleFileSelect(file);
-    }
-});
-
-/* ═══════════════ LUNA — MEDIA RECORDING ═══════════════ */
-let mediaRecorder = null;
-let recordedChunks = [];
-let recordingStream = null;
-let currentFacingMode = 'user'; // Front camera by default
-let isRecording = false;
-let recordingType = null;
-let recordingStartTime = 0;
-let recordingInterval = null;
-
-function updateTimer() {
-    const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-    const m = Math.floor(elapsed / 60);
-    const s = elapsed % 60;
-    recordingTimer.textContent = `${m}:${s < 10 ? '0' : ''}${s}`;
-}
-
-async function startRecording(type) {
-    if (isRecording) return;
-    try {
-        const constraints = type === 'video' ? { video: { facingMode: currentFacingMode }, audio: true } : { audio: true };
-        recordingStream = await navigator.mediaDevices.getUserMedia(constraints);
-        
-        recordingType = type;
-        isRecording = true;
-        recordingStartTime = Date.now();
-
-        if (type === 'video') {
-            recordingPreview.srcObject = recordingStream;
-            if (currentFacingMode === 'user') {
-                recordingPreview.classList.add('mirrored');
-            } else {
-                recordingPreview.classList.remove('mirrored');
-            }
-            recordingPreviewContainer.classList.remove('hidden');
-        }
-        lunaDynamicBtn.classList.add('recording');
-        lunaTextInput.classList.add('hidden');
-        recordingTimer.classList.remove('hidden');
-        recordingTimer.textContent = '0:00';
-        recordingInterval = setInterval(updateTimer, 1000);
-
-        mediaRecorder = new MediaRecorder(recordingStream);
-        recordedChunks = [];
-        
-        mediaRecorder.ondataavailable = e => {
-            if (e.data.size > 0) recordedChunks.push(e.data);
-        };
-        mediaRecorder.onstop = () => {
-            clearInterval(recordingInterval);
-            const finalDuration = recordingTimer.textContent;
-            
-            const blob = new Blob(recordedChunks, { type: type === 'video' ? 'video/webm' : 'audio/webm' });
-            if (recordingStream) {
-                recordingStream.getTracks().forEach(track => track.stop());
-            }
-            recordingStream = null;
-            isRecording = false;
-            recordingPreviewContainer.classList.add('hidden');
-            recordingPreview.srcObject = null;
-            lunaDynamicBtn.classList.remove('recording');
-            lunaTextInput.classList.remove('hidden');
-            recordingTimer.classList.add('hidden');
-            
-            // Only send if recording is > 500ms
-            if (Date.now() - recordingStartTime > 500 && recordedChunks.length > 0) {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const msgs = getMessages();
-                    msgs.push({
-                        id: nextId(msgs), sender:'luna', type: type,
-                        content: '', timestamp: new Date().toISOString(),
-                        mediaUrl: reader.result, deletedByLuna: false,
-                        duration: finalDuration
-                    });
-                    saveMessages(msgs);
-                    renderLunaMessages();
-                    scrollLuna();
-                    spawnHearts();
-                };
-                reader.readAsDataURL(blob);
-            }
-        };
-        
-        mediaRecorder.start();
-    } catch (err) {
-        alert('Microphone/Camera access denied or unavailable.');
-        isRecording = false;
-    }
-}
-
-function stopRecording() {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-    }
-}
-
-// ═══════════════ DYNAMIC BUTTON LOGIC ═══════════════
-const SVGS = {
-    voice: `<svg class="icon-mic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`,
-    video: `<svg class="icon-video" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>`,
-    send: `<svg class="icon-send" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>`
-};
-
-let currentMediaMode = 'voice'; // 'voice' or 'video'
-let btnHoldTimer = null;
-let isBtnHeld = false;
-
-function updateDynamicBtn() {
-    const text = lunaTextInput.value.trim();
-    if (text) {
-        lunaDynamicBtn.innerHTML = SVGS.send;
-        lunaDynamicBtn.title = "Send";
-    } else {
-        lunaDynamicBtn.innerHTML = SVGS[currentMediaMode];
-        lunaDynamicBtn.title = currentMediaMode === 'voice' ? 'Record Voice' : 'Record Video Note';
-    }
-}
-
-function setupDynamicBtn() {
-    if (!lunaDynamicBtn) return;
-    
-    const startAction = (e) => {
-        if (e.type === 'pointerdown' && e.button !== 0 && e.pointerType === 'mouse') return;
-        e.preventDefault();
-        
-        const text = lunaTextInput.value.trim();
-        if (text) return; // If text is present, do nothing on mousedown
-        
-        lunaDynamicBtn.setPointerCapture(e.pointerId);
-        isBtnHeld = false;
-        
-        // Wait 300ms to distinguish between tap (toggle) and hold (record)
-        btnHoldTimer = setTimeout(() => {
-            isBtnHeld = true;
-            startRecording(currentMediaMode === 'voice' ? 'audio' : 'video');
-        }, 300);
-    };
-
-    const stopAction = (e) => {
-        if (lunaDynamicBtn.hasPointerCapture(e.pointerId)) {
-            lunaDynamicBtn.releasePointerCapture(e.pointerId);
-        }
-        
-        clearTimeout(btnHoldTimer);
-        
-        const text = lunaTextInput.value.trim();
-        if (text) {
-            if (e.type === 'pointerup') lunaSendText();
-            return;
-        }
-
-        if (isBtnHeld) {
-            // It was a hold -> stop recording
-            stopRecording();
-        } else if (e.type === 'pointerup') {
-            // It was a short tap -> toggle mode
-            currentMediaMode = currentMediaMode === 'voice' ? 'video' : 'voice';
-            updateDynamicBtn();
-        }
-        isBtnHeld = false;
-    };
-
-    lunaDynamicBtn.addEventListener('pointerdown', startAction);
-    lunaDynamicBtn.addEventListener('pointerup', stopAction);
-    lunaDynamicBtn.addEventListener('pointercancel', stopAction);
-}
-
-setupDynamicBtn();
-
-if (flipCameraBtn) {
-    flipCameraBtn.addEventListener('click', async () => {
-        // Toggle camera
-        currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-        
-        // If currently recording video, we need to restart the stream
-        if (isRecording && recordingType === 'video' && recordingStream) {
-            // Stop old video track
-            const oldVideoTrack = recordingStream.getVideoTracks()[0];
-            if (oldVideoTrack) oldVideoTrack.stop();
-            
-            try {
-                const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
-                const newVideoTrack = newStream.getVideoTracks()[0];
-                
-                // Remove old, add new
-                if (oldVideoTrack) recordingStream.removeTrack(oldVideoTrack);
-                recordingStream.addTrack(newVideoTrack);
-                
-                // Update preview mirroring
-                if (currentFacingMode === 'user') {
-                    recordingPreview.classList.add('mirrored');
-                } else {
-                    recordingPreview.classList.remove('mirrored');
-                }
-            } catch (err) {
-                console.error("Failed to flip camera", err);
-            }
-        }
-    });
-}
-
-lunaPreviewClose.addEventListener('click', () => {
-    lunaMediaPreview.classList.add('hidden');
-    pendingMedia = null;
-});
-
-lunaPreviewSend.addEventListener('click', () => {
-    if (!pendingMedia) return;
-    const msgs = getMessages();
-    msgs.push({
-        id: nextId(msgs), sender:'luna', type: pendingMedia.type,
-        content: '', timestamp: new Date().toISOString(),
-        mediaUrl: pendingMedia.dataUrl, deletedByLuna: false
-    });
-    saveMessages(msgs);
-    pendingMedia = null;
-    lunaMediaPreview.classList.add('hidden');
-    renderLunaMessages();
-    scrollLuna();
-    spawnHearts();
-});
-
-/* ═══════════════ LUNA — HEARTS ═══════════════ */
-function spawnHearts() {
-    const emojis = ['💗','💕','✨','💜','🩷'];
-    for (let i = 0; i < 6; i++) {
-        const el = document.createElement('span');
-        el.className = 'heart-particle';
-        el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-        el.style.left = (40 + Math.random() * 40) + '%';
-        el.style.bottom = '80px';
-        el.style.animationDelay = (i * 0.08) + 's';
-        heartsContainer.appendChild(el);
-        setTimeout(() => el.remove(), 1400);
-    }
 }
 
 /* ═══════════════ ADMIN — RENDER ═══════════════ */
-function renderAdmin(filter) {
-    const search = (filter !== undefined ? filter : adminSearch.value).toLowerCase();
-    const msgs = getMessages();
-
-    // Mark Luna's messages as read (optimized check)
-    let hasUnread = false;
-    const checkStart = Math.max(0, msgs.length - 100);
-    for (let i = checkStart; i < msgs.length; i++) {
-        if (msgs[i].sender === 'luna' && !msgs[i].read) {
-            msgs[i].read = true;
-            hasUnread = true;
-        }
-    }
-    if (hasUnread) {
-        // Debounce saving
-        if (window.adminReadTimeout) clearTimeout(window.adminReadTimeout);
-        window.adminReadTimeout = setTimeout(() => saveMessages(msgs), 1000);
+function renderAdmin() {
+    let msgs = getMessages();
+    
+    if (adminSearch && adminSearch.value.trim()) {
+        const searchVal = adminSearch.value.toLowerCase();
+        msgs = msgs.filter(m => m.content && m.content.toLowerCase().includes(searchVal));
     }
 
-    // Sidebar — luna messages only
-    const lunaOnly = msgs.filter(m => m.sender === 'luna');
-    adminSidebar.innerHTML = lunaOnly.length
-        ? lunaOnly.slice().reverse().map(m => {
-            const preview = m.type === 'text' ? m.content : `[${m.type}]`;
-            return `<div class="sidebar-item" data-id="${m.id}">
-                <div class="si-sender">Malak ${m.deletedByLuna ? '<span style="color:#e74c6f;font-size:10px;margin-left:4px;">(Deleted)</span>' : ''}</div>
-                <div class="si-preview">${escapeHtml(preview)}</div>
-                <div class="si-time">${fmtTime(m.timestamp)}</div>
-            </div>`;
-        }).join('')
-        : '<div style="padding:24px;color:#bbb;text-align:center">No messages yet</div>';
-
-    // Main area — all messages, filtered
-    const filtered = msgs.filter(m => {
-        // Filter by Deleted status
-        if (adminShowDeleted) {
-            if (!m.deletedByLuna) return false;
-        } else if (adminShowSaved) {
-            if (!m.savedByLuna || m.deletedByLuna) return false;
-        } else {
-            if (m.deletedByLuna) return false;
-        }
-
-        if (!search) return true;
-        return (m.content && m.content.toLowerCase().includes(search))
-            || m.sender.toLowerCase().includes(search)
-            || m.type.toLowerCase().includes(search);
-    });
-
-    if (!filtered.length) {
-        adminMessages.innerHTML = '<div class="empty-state"><span>📭</span>No messages found</div>';
+    if (!msgs.length) {
+        adminMessages.innerHTML = `<div class="empty-state">No messages found</div>`;
         return;
     }
 
-    const displayMsgs = filtered; // Paginated via Firebase
-    const hasMore = filtered.length >= currentMessagesLimit && !search;
-
     let html = '';
-    if (hasMore) {
-        html += `<div class="load-more-container"><button class="load-more-btn" id="adminLoadMoreBtn">Show older messages...</button></div>`;
-    }
-
     let lastDate = '';
-    displayMsgs.forEach(m => {
+    
+    msgs.forEach(m => {
         const msgDate = formatDateSeparator(m.timestamp);
         if (msgDate !== lastDate) {
             html += `<div class="date-separator"><span>${msgDate}</span></div>`;
             lastDate = msgDate;
         }
-        
-        const isLuna = m.sender === 'luna';
-        let cls = isLuna ? 'luna-sent' : 'admin-reply';
-        let senderLabel = isLuna ? '👸🏻 Malak' : '🛡️ Admin';
 
-        if (m.type === 'heart-bot') {
-            cls = 'heart-bot-bubble-admin';
-            senderLabel = '✨ Automated';
-        }
-
-        let content = '';
-        if (m.type === 'text') {
-            content = escapeHtml(m.content);
-        } else if (m.type === 'sticker') {
-            content = `<img src="${m.mediaUrl}" alt="sticker" loading="lazy" class="sticker-msg-img" />`;
-            cls += ' sticker-bubble';
-        } else if (m.type === 'image') {
-            content = `<img src="${m.mediaUrl}" alt="image" loading="lazy"/>`;
-        } else if (m.type === 'video') {
-            content = `<video src="${m.mediaUrl}" controls playsinline></video>`;
-        } else if (m.type === 'audio') {
-            const isLuna = m.sender === 'luna';
-            content = `<div class="custom-audio-player admin-audio">
-                <div class="audio-icon" style="color: #c9a0dc">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+        const isAdmin = m.sender === 'admin';
+        html += `
+            <div class="message-row" style="display:flex; justify-content: ${isAdmin ? 'flex-end' : 'flex-start'}; margin: 10px 0;">
+                <div class="msg-bubble" style="max-width:70%; padding:10px; border-radius:12px; background:${isAdmin?'#3a3a4a':'#5a4a6a'}; color:#fff;">
+                    <span style="font-size:11px; opacity:0.7; display:block; margin-bottom:2px;">${isAdmin ? 'You' : 'Malak'}</span>
+                    <div class="msg-content">${escapeHtml(m.content)}</div>
+                    <div class="msg-time" style="font-size:10px; opacity:0.5; text-align:right; margin-top:4px;">${shortTime(m.timestamp)}</div>
                 </div>
-                <audio src="${m.mediaUrl}" controls style="height:28px; width:150px;"></audio>
-                <span class="audio-duration-tag" style="color: #888;">${m.duration || ''}</span>
-            </div>`;
-        } else if (m.type === 'heart-bot') {
-            content = `<div style="font-size: 30px; text-align: center;">❤️</div><div style="margin-top: 5px; font-weight: bold; text-align: center; font-size: 13px;">You deserve a big heart because of your beauty</div>`;
-        }
-        const reactionBadge = m.reaction ? `<div class="reaction-badge" onclick="toggleReaction(${m.id}, event)">${m.reaction}</div>` : '';
-        const savedBadge = m.savedByLuna ? `<div class="saved-badge">⭐ Saved by Malak</div>` : '';
-        const restoreBtn = m.deletedByLuna ? `<button class="admin-restore-small" onclick="restoreMsg(${m.id})" title="Restore">Restore</button>` : '';
-
-        html += `<div class="admin-msg ${cls}" data-id="${m.id}" ondblclick="toggleReaction(${m.id}, event)">
-            <div class="am-sender">${senderLabel} ${m.deletedByLuna ? '<span style="color:#e74c6f;font-size:10px;margin-left:4px;">(Deleted by Malak)</span>' : ''}</div>
-            ${content}
-            <div class="am-time">
-                <span>${fmtTime(m.timestamp)}</span>
-                ${isLuna ? `<span style="color:#888;font-size:10px;">${m.read ? 'Read ✓✓' : 'Delivered ✓'}</span>` : ''}
             </div>
-            ${reactionBadge}
-            ${savedBadge}
-            ${restoreBtn}
-        </div>`;
+        `;
     });
+    
     adminMessages.innerHTML = html;
-    
-    const loadBtn = $('adminLoadMoreBtn');
-    if (loadBtn) {
-        loadBtn.onclick = () => {
-            loadBtn.textContent = "Loading...";
-            startMessagesSubscription(currentMessagesLimit + 100);
-        };
-    }
-    
-    if (!hasMore) adminMessages.scrollTop = adminMessages.scrollHeight;
 }
 
-window.renderAllAdmin = function() {
-    startMessagesSubscription(currentMessagesLimit + 100);
+/* ═══════════════ GLOBAL BUTTON ACTIONS (MODULE COMPATIBLE) ═══════════════ */
+window.deleteMsg = function(id) {
+    set(ref(db, `messages/${id}/deletedByLuna`), true);
 };
 
-adminSearch.addEventListener('input', () => renderAdmin());
-
-if (adminToggleDeletedBtn) {
-    adminToggleDeletedBtn.addEventListener('click', () => {
-        adminShowDeleted = !adminShowDeleted;
-        adminShowSaved = false; // mutually exclusive
-        adminToggleDeletedBtn.textContent = adminShowDeleted ? '💬 Active Chat' : '🗑️ Deleted';
-        adminToggleDeletedBtn.style.background = adminShowDeleted ? '#e8f5e9' : '#e8eaf6';
-        adminToggleDeletedBtn.style.color = adminShowDeleted ? '#2e7d32' : '#5c6bc0';
-        
-        // Reset Saved button
-        adminToggleSavedBtn.classList.remove('active');
-        adminToggleSavedBtn.textContent = '⭐ Saved';
-        adminToggleSavedBtn.style.background = '#e8eaf6';
-        adminToggleSavedBtn.style.color = '#5c6bc0';
-        
-        renderAdmin();
-    });
-}
-
-if (adminToggleSavedBtn) {
-    adminToggleSavedBtn.addEventListener('click', () => {
-        adminShowSaved = !adminShowSaved;
-        adminShowDeleted = false; // mutually exclusive
-        adminToggleSavedBtn.classList.toggle('active', adminShowSaved);
-        adminToggleSavedBtn.textContent = adminShowSaved ? '💬 Active Chat' : '⭐ Saved';
-        adminToggleSavedBtn.style.background = adminShowSaved ? '#fff9c4' : '#e8eaf6';
-        adminToggleSavedBtn.style.color = adminShowSaved ? '#fbc02d' : '#5c6bc0';
-        
-        // Reset Deleted button
-        adminToggleDeletedBtn.textContent = '🗑️ Deleted';
-        adminToggleDeletedBtn.style.background = '#e8eaf6';
-        adminToggleSavedBtn.style.color = '#5c6bc0';
-        
-        renderAdmin();
-    });
-}
-
-if (lunaToggleSaved) {
-    lunaToggleSaved.addEventListener('click', () => {
-        lunaShowSaved = !lunaShowSaved;
-        lunaToggleSaved.classList.toggle('active', lunaShowSaved);
-        
-        // Update text and style to be responsive like admin buttons
-        lunaToggleSaved.innerHTML = lunaShowSaved ? '💬 Back to Chat' : '⭐ Preferred Messages';
-        lunaToggleSaved.style.background = lunaShowSaved ? 'rgba(255,255,255,0.7)' : 'rgba(255,215,0,0.05)';
-        lunaToggleSaved.style.color = lunaShowSaved ? '#c9a0dc' : '#b0a0c0';
-        lunaToggleSaved.style.borderColor = lunaShowSaved ? '#c9a0dc' : 'rgba(255,215,0,0.2)';
-        
-        renderLunaMessages();
-    });
-}
-
-/* Sidebar click scrolls to message */
-adminSidebar.addEventListener('click', e => {
-    const item = e.target.closest('.sidebar-item');
-    if (!item) return;
-    const id = item.dataset.id;
-    const msgs = getMessages();
-    const msg = msgs.find(m => m.id == id);
-    
-    // Auto-switch view if needed
+window.toggleSave = function(id) {
+    const msg = globalMessages.find(m => m.id === id);
     if (msg) {
-        if (msg.deletedByLuna && !adminShowDeleted) {
-            adminToggleDeletedBtn.click();
-        } else if (!msg.deletedByLuna && adminShowDeleted) {
-            adminToggleDeletedBtn.click();
-        }
-    }
-
-    setTimeout(() => {
-        const el = adminMessages.querySelector(`.admin-msg[data-id="${id}"]`);
-        if (el) el.scrollIntoView({ behavior:'smooth', block:'center' });
-    }, 100);
-});
-
-/* ═══════════════ ADMIN — REPLY ═══════════════ */
-function adminSendReply() {
-    const text = adminReplyInput.value.trim();
-    if (!text) return;
-    const msgs = getMessages();
-    msgs.push({
-        id: nextId(msgs), sender:'admin', type:'text',
-        content: text, timestamp: new Date().toISOString(),
-        mediaUrl: null, deletedByLuna: false
-    });
-    saveMessages(msgs);
-    adminReplyInput.value = '';
-    renderAdmin();
-}
-
-adminReplyBtn.addEventListener('click', adminSendReply);
-adminReplyInput.addEventListener('keydown', e => { if (e.key === 'Enter') adminSendReply(); });
-
-/* ═══════════════ GLOBAL LIGHTBOX ═══════════════ */
-document.addEventListener('click', e => {
-    if (e.target.tagName === 'IMG' && (e.target.closest('.luna-bubble') || e.target.closest('.admin-msg') || e.target.closest('.admin-bubble-in-luna'))) {
-        lightboxContent.innerHTML = `<img src="${e.target.src}" style="max-width:100%; max-height:85vh; border-radius:12px;"/>`;
-        lightbox.classList.remove('hidden');
-    } else if (e.target.tagName === 'VIDEO' && (e.target.closest('.luna-bubble') || e.target.closest('.admin-msg') || e.target.closest('.admin-bubble-in-luna'))) {
-        lightboxContent.innerHTML = `<video src="${e.target.src}" controls autoplay style="max-width:100%; max-height:85vh; border-radius:12px;"></video>`;
-        lightbox.classList.remove('hidden');
-    }
-});
-lightboxClose.addEventListener('click', () => {
-    lightbox.classList.add('hidden');
-    lightboxContent.innerHTML = ''; // stop video
-});
-
-/* ═══════════════ NEW FEATURES ═══════════════ */
-window.toggleReaction = function(id, e) {
-    if (e) e.stopPropagation();
-    const msgs = getMessages();
-    const idx = msgs.findIndex(m => m.id === id);
-    if (idx !== -1) {
-        msgs[idx].reaction = msgs[idx].reaction ? null : '❤️';
-        saveMessages(msgs);
-        if (currentRole === 'luna') renderLunaMessages();
-        if (currentRole === 'admin') renderAdmin();
+        set(ref(db, `messages/${id}/savedByLuna`), !msg.savedByLuna);
     }
 };
 
-function handleScrollBtn(container, btn) {
-    if (!btn || !container) return;
-    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-    if (isAtBottom) btn.classList.remove('visible');
-    else btn.classList.add('visible');
-}
-lunaMessages.addEventListener('scroll', () => handleScrollBtn(lunaMessages, lunaScrollBottom));
-adminMessages.addEventListener('scroll', () => handleScrollBtn(adminMessages, adminScrollBottom));
+// Auto scroll listeners
+if (lunaScrollBottom) lunaScrollBottom.addEventListener('click', () => scrollLuna());
+if (adminScrollBottom) adminScrollBottom.addEventListener('click', () => scrollAdmin());
 
-if(lunaScrollBottom) {
-    lunaScrollBottom.addEventListener('click', () => {
-        lunaMessages.scrollTo({ top: lunaMessages.scrollHeight, behavior: 'smooth' });
-    });
+/* ═══════════════ INITIALIZATION ═══════════════ */
+const session = getSession();
+if (session && session.role) {
+    showScreen(session.role);
+} else {
+    showScreen(null);
 }
-if(adminScrollBottom) {
-    adminScrollBottom.addEventListener('click', () => {
-        adminMessages.scrollTo({ top: adminMessages.scrollHeight, behavior: 'smooth' });
-    });
-}
-
-/* ═══════════════ NEW UI EVENTS ═══════════════ */
-const affirmations = [
-    "You are doing great today! 🌸",
-    "Your smile lights up the world! ✨",
-    "Take a deep breath, you are safe here. 🦋",
-    "You are beautiful inside and out! 💖",
-    "Never forget how special you are. 🥰"
-];
-
-if (lunaMoodBtn) {
-    lunaMoodBtn.addEventListener('click', () => {
-        const randomMsg = affirmations[Math.floor(Math.random() * affirmations.length)];
-        showToast(randomMsg);
-    });
-}
-
-if (lunaEmojiToggle && emojiPicker) {
-    lunaEmojiToggle.addEventListener('click', (e) => {
-        e.stopPropagation();
-        emojiPicker.classList.toggle('hidden');
-        if (stickerPicker) stickerPicker.classList.add('hidden');
-    });
-    
-    document.addEventListener('click', (e) => {
-        if (!emojiPicker.contains(e.target) && e.target !== lunaEmojiToggle && !lunaEmojiToggle.contains(e.target)) {
-            emojiPicker.classList.add('hidden');
-        }
-    });
-    
-    emojiPicker.querySelectorAll('.emoji-item').forEach(item => {
-        item.addEventListener('click', () => {
-            lunaTextInput.value += item.textContent;
-            emojiPicker.classList.add('hidden');
-            lunaTextInput.focus();
-            if (typeof updateDynamicBtn === 'function') updateDynamicBtn();
-        });
-    });
-}
-
-function sendSticker(url) {
-    const msgs = getMessages();
-    msgs.push({
-        id: nextId(msgs), sender:'luna', type:'sticker',
-        content: '', timestamp: new Date().toISOString(),
-        mediaUrl: url, deletedByLuna: false
-    });
-    saveMessages(msgs);
-    renderLunaMessages();
-    scrollLuna();
-    spawnHearts();
-    if (stickerPicker) stickerPicker.classList.add('hidden');
-}
-
-if (lunaStickerToggle && stickerPicker) {
-    lunaStickerToggle.addEventListener('click', (e) => {
-        e.stopPropagation();
-        stickerPicker.classList.toggle('hidden');
-        if (emojiPicker) emojiPicker.classList.add('hidden');
-    });
-    
-    document.addEventListener('click', (e) => {
-        if (!stickerPicker.contains(e.target) && e.target !== lunaStickerToggle && !lunaStickerToggle.contains(e.target)) {
-            stickerPicker.classList.add('hidden');
-        }
-    });
-    
-    stickerPicker.querySelectorAll('.sticker-item').forEach(item => {
-        item.addEventListener('click', () => {
-            sendSticker(item.src);
-        });
-    });
-}
-
-if (lunaStickerInput) {
-    lunaStickerInput.addEventListener('change', e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            sendSticker(reader.result);
-        };
-        reader.readAsDataURL(file);
-        lunaStickerInput.value = '';
-    });
-}
-
-/* ═══════════════ UTIL ═══════════════ */
-function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-/* ═══════════════ INIT ═══════════════ */
-(function init() {
-    const session = getSession();
-    if (session && session.role) {
-        showScreen(session.role);
-    } else {
-        showScreen(null);
-    }
-    if (typeof updateDynamicBtn === 'function') updateDynamicBtn();
-})();
