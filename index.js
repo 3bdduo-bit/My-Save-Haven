@@ -391,9 +391,10 @@ function renderLunaMessages() {
 
     // إضافة زرار تحميل الرسايل الأقدم في بداية الـ HTML تلقائياً
     let html = `
-        <div style="text-align:center; padding: 10px 0;">
-            <button onclick="window.loadMoreMessages()" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.15); padding: 6px 16px; border-radius: 20px; cursor: pointer; font-size: 11px; transition: 0.2s;">
-                🔄 Load Older Messages
+        <div class="load-more-container">
+            <button onclick="window.loadMoreMessages()" class="modern-pagination-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                Load Older Messages
             </button>
         </div>
     `;
@@ -452,9 +453,10 @@ function renderAdmin() {
     let msgs = getMessages();
     
     let html = `
-        <div style="text-align:center; padding: 10px 0;">
-            <button onclick="window.loadMoreMessages()" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.15); padding: 6px 16px; border-radius: 20px; cursor: pointer; font-size: 11px; transition: 0.2s;">
-                🔄 Load Older Messages
+        <div class="load-more-container">
+            <button onclick="window.loadMoreMessages()" class="modern-pagination-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                Load Older Messages
             </button>
         </div>
     `;
